@@ -16,7 +16,7 @@ import shutil
 import os
 import hashlib
 import progressbar
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QPalette
 from tqdm import tqdm
 import csv
 import numpy as np
@@ -180,6 +180,12 @@ class UI(Ui_MainWindow, QMainWindow):
 
     # initialize all functions
     def init_button_actions(self):
+        #low_rez = QtCore.QSize(40, 40)
+        self.setWindowTitle("ADC utility tool")
+        # pixmap = QPixmap('bb.jpg')
+        # pixmap.scaled(1171, 742)
+        # self.setStyleSheet(f'background-image: url({pixmap.toImage()}); background-position: right; background-repeat: repeat;')
+
         self.offset_y.hide()
         self.offset_x.hide()
         self.x_offset_text.hide()

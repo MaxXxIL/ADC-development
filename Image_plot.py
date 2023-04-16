@@ -9,12 +9,15 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+from PyQt5.QtGui import QPixmap
 
 class Ui_plot_image(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(571, 620)
+        pixmap = QPixmap(571, 620)
+        pixmap.scaled(1171, 742)
+        MainWindow.setStyleSheet(f'background-image: url({pixmap.toImage()}); background-position: right; background-repeat: repeat;')
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
