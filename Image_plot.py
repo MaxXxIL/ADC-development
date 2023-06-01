@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'C:\Users\doron\Documents\py proprogressBarjects\Image_editor\Image plot.ui'
+# Form implementation generated from reading ui file 'C:\Users\doron\Documents\ADC utility tool\Image plot.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.7
 #
@@ -9,15 +9,12 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QPixmap
+
 
 class Ui_plot_image(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(571, 620)
-        pixmap = QPixmap(571, 620)
-        pixmap.scaled(1171, 742)
-        MainWindow.setStyleSheet(f'background-image: url({pixmap.toImage()}); background-position: right; background-repeat: repeat;')
+        MainWindow.resize(644, 620)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -25,20 +22,23 @@ class Ui_plot_image(object):
         self.label.setText("")
         self.label.setObjectName("label")
         self.Button_prev = QtWidgets.QPushButton(self.centralwidget)
-        self.Button_prev.setGeometry(QtCore.QRect(240, 550, 75, 23))
+        self.Button_prev.setGeometry(QtCore.QRect(470, 550, 75, 23))
         self.Button_prev.setObjectName("Button_prev")
         self.Button_del = QtWidgets.QPushButton(self.centralwidget)
         self.Button_del.setGeometry(QtCore.QRect(10, 550, 75, 23))
         self.Button_del.setObjectName("Button_del")
         self.Button_next = QtWidgets.QPushButton(self.centralwidget)
-        self.Button_next.setGeometry(QtCore.QRect(320, 550, 75, 23))
+        self.Button_next.setGeometry(QtCore.QRect(550, 550, 75, 23))
         self.Button_next.setObjectName("Button_next")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
-        self.label_2.setGeometry(QtCore.QRect(6, 523, 391, 20))
+        self.label_2.setGeometry(QtCore.QRect(6, 523, 621, 20))
         self.label_2.setObjectName("label_2")
+        self.label_3 = QtWidgets.QLabel(self.centralwidget)
+        self.label_3.setGeometry(QtCore.QRect(90, 550, 361, 21))
+        self.label_3.setObjectName("label_3")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 571, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 644, 22))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -55,13 +55,14 @@ class Ui_plot_image(object):
         self.Button_del.setText(_translate("MainWindow", "Delete Image"))
         self.Button_next.setText(_translate("MainWindow", "Next Image"))
         self.label_2.setText(_translate("MainWindow", "Image Path:"))
+        self.label_3.setText(_translate("MainWindow", "Class Lable:"))
 
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_plot_image()
+    ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
     sys.exit(app.exec_())

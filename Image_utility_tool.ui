@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>Ui_MainWindow</class>
+ <widget class="QMainWindow" name="Ui_MainWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1171</width>
-    <height>742</height>
+    <width>1442</width>
+    <height>757</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,12 +19,12 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>911</width>
-      <height>691</height>
+      <width>1181</width>
+      <height>701</height>
      </rect>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="crop_tab">
      <attribute name="title">
@@ -254,8 +254,8 @@
      <widget class="QPushButton" name="Extractor_prev">
       <property name="geometry">
        <rect>
-        <x>260</x>
-        <y>630</y>
+        <x>550</x>
+        <y>650</y>
         <width>75</width>
         <height>23</height>
        </rect>
@@ -268,13 +268,48 @@
       <property name="geometry">
        <rect>
         <x>630</x>
-        <y>630</y>
+        <y>650</y>
         <width>75</width>
         <height>23</height>
        </rect>
       </property>
       <property name="text">
        <string>Next Image</string>
+      </property>
+     </widget>
+     <widget class="QScrollBar" name="horizontalScrollBar">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>650</y>
+        <width>281</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="maximum">
+       <number>50</number>
+      </property>
+      <property name="value">
+       <number>50</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_6">
+      <property name="geometry">
+       <rect>
+        <x>246</x>
+        <y>620</y>
+        <width>291</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0.1                                      Zoom                                    10</string>
       </property>
      </widget>
     </widget>
@@ -331,6 +366,19 @@
        <string>Ready to use</string>
       </property>
      </widget>
+     <widget class="QCheckBox" name="checkBox">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>130</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>separate by recipe</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="duplicate_tab">
      <attribute name="title">
@@ -339,9 +387,9 @@
      <widget class="QPushButton" name="seek_identical">
       <property name="geometry">
        <rect>
-        <x>40</x>
+        <x>20</x>
         <y>30</y>
-        <width>131</width>
+        <width>171</width>
         <height>31</height>
        </rect>
       </property>
@@ -354,7 +402,7 @@
        <rect>
         <x>20</x>
         <y>70</y>
-        <width>881</width>
+        <width>1141</width>
         <height>591</height>
        </rect>
       </property>
@@ -369,12 +417,145 @@
        </property>
       </column>
      </widget>
+     <widget class="QSlider" name="horizontalSlider">
+      <property name="geometry">
+       <rect>
+        <x>620</x>
+        <y>110</y>
+        <width>191</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="singleStep">
+       <number>1</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QGraphicsView" name="graphicsView">
+      <property name="geometry">
+       <rect>
+        <x>620</x>
+        <y>210</y>
+        <width>256</width>
+        <height>192</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_2">
+      <property name="geometry">
+       <rect>
+        <x>660</x>
+        <y>20</y>
+        <width>131</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Enable histogram view</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_min">
+      <property name="geometry">
+       <rect>
+        <x>620</x>
+        <y>80</y>
+        <width>51</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>min</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_max">
+      <property name="geometry">
+       <rect>
+        <x>760</x>
+        <y>80</y>
+        <width>51</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>max</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_value">
+      <property name="geometry">
+       <rect>
+        <x>830</x>
+        <y>110</y>
+        <width>51</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>value</string>
+      </property>
+     </widget>
+     <widget class="QSlider" name="horizontalSlider_2">
+      <property name="geometry">
+       <rect>
+        <x>620</x>
+        <y>140</y>
+        <width>191</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="value">
+       <number>99</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_lower">
+      <property name="geometry">
+       <rect>
+        <x>560</x>
+        <y>110</y>
+        <width>41</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>lower th</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_upper">
+      <property name="geometry">
+       <rect>
+        <x>560</x>
+        <y>140</y>
+        <width>41</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>upper th</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="hist_value_2">
+      <property name="geometry">
+       <rect>
+        <x>830</x>
+        <y>140</y>
+        <width>51</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>value</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QPushButton" name="destination_button">
     <property name="geometry">
      <rect>
-      <x>930</x>
+      <x>1200</x>
       <y>80</y>
       <width>171</width>
       <height>23</height>
@@ -387,7 +568,7 @@
    <widget class="QPlainTextEdit" name="Source_TextEdit">
     <property name="geometry">
      <rect>
-      <x>930</x>
+      <x>1200</x>
       <y>40</y>
       <width>211</width>
       <height>31</height>
@@ -400,7 +581,7 @@
    <widget class="QPlainTextEdit" name="destination_TextEdit">
     <property name="geometry">
      <rect>
-      <x>930</x>
+      <x>1200</x>
       <y>100</y>
       <width>211</width>
       <height>31</height>
@@ -413,7 +594,7 @@
    <widget class="QPushButton" name="source_button">
     <property name="geometry">
      <rect>
-      <x>930</x>
+      <x>1200</x>
       <y>20</y>
       <width>141</width>
       <height>23</height>
@@ -426,7 +607,7 @@
    <widget class="QProgressBar" name="progressBar">
     <property name="geometry">
      <rect>
-      <x>940</x>
+      <x>1210</x>
       <y>170</y>
       <width>201</width>
       <height>23</height>
@@ -439,17 +620,17 @@
    <widget class="QListWidget" name="Log_listwidget">
     <property name="geometry">
      <rect>
-      <x>940</x>
+      <x>1210</x>
       <y>230</y>
       <width>211</width>
-      <height>451</height>
+      <height>461</height>
      </rect>
     </property>
    </widget>
    <widget class="QLabel" name="label_4">
     <property name="geometry">
      <rect>
-      <x>940</x>
+      <x>1210</x>
       <y>210</y>
       <width>101</width>
       <height>21</height>
@@ -466,8 +647,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1171</width>
-     <height>21</height>
+     <width>1442</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuImage_Editor">
