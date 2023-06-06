@@ -33,10 +33,39 @@ class page(Ui_plot_image, QMainWindow):
         self.Button_next.clicked.connect(self.next_image)
         self.Button_prev.clicked.connect(self.prev_image)
         self.Button_del.clicked.connect(self.delete_image)
-
+        self.pushButton.clicked.connect(self.Next_row_image)
         self.r = None
         self.c = None
 
+    def Next_row_image(self):
+        r_c = self.table.columnCount()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
+        self.r = self.r +1
+        if self.c + 1 == self.column_max :
+           self.Button_prev.show()
+           self.Button_next.hide()
+        elif self.c == 0:
+            self.Button_prev.hide()
+            self.Button_next.show()
+        else:
+            self.Button_prev.show()
+            self.Button_next.show()
+        try:
+            self.f_path = os.path.normpath(self.duplicates2[self.r][self.c])
+            #self.f_path = os.path.normpath(self.table.item(self.r, self.c).text())
+            geo = self.label.geometry().getRect()
+            pixmap = QPixmap(self.f_path)
+            pixmap_resized = pixmap.scaled(geo[3], geo[3])
+            self.label_2.setText("Image path: " + self.f_path)
+            self.label.setPixmap(pixmap_resized)
+            self.label.setScaledContents(True)
+        except:
+            messagebox.showinfo(title='Error massage', message='empty cell')
+        tmp = self.f_path.split("\\")
+        self.label_3.setText("Class lable: " + tmp[-2])
+        self.label_3.setStyleSheet("color : red")
     def next_image(self):
         r_c = self.table.columnCount()
         if self.r == None and self.c == None:
@@ -53,7 +82,8 @@ class page(Ui_plot_image, QMainWindow):
             self.Button_prev.show()
             self.Button_next.show()
         try:
-            self.f_path = os.path.normpath(self.table.item(self.r, self.c).text())
+            self.f_path = os.path.normpath(self.duplicates2[self.r][self.c])
+            #self.f_path = os.path.normpath(self.table.item(self.r, self.c).text())
             geo = self.label.geometry().getRect()
             pixmap = QPixmap(self.f_path)
             pixmap_resized = pixmap.scaled(geo[3], geo[3])
@@ -64,6 +94,7 @@ class page(Ui_plot_image, QMainWindow):
             messagebox.showinfo(title='Error massage', message='empty cell')
         tmp = self.f_path.split("\\")
         self.label_3.setText("Class lable: " + tmp[-2])
+        self.label_3.setStyleSheet("color : red")
 
     def delete_image(self):
         try:
@@ -88,7 +119,7 @@ class page(Ui_plot_image, QMainWindow):
             self.Button_next.show()
 
         try:
-            self.f_path = os.path.normpath(self.table.item(self.r, self.c).text())
+            self.f_path = os.path.normpath(self.duplicates2[self.r][self.c])
             geo = self.label.geometry().getRect()
             pixmap = QPixmap(self.f_path)
             pixmap_resized = pixmap.scaled(geo[3], geo[3])
@@ -99,6 +130,8 @@ class page(Ui_plot_image, QMainWindow):
             messagebox.showinfo(title='Error massage', message='empty cell')
         tmp = self.f_path.split("\\")
         self.label_3.setText("Class lable: " + tmp[-2])
+        self.label_3.setStyleSheet("color : red")
+
 class ValueItem(QGraphicsItem):
     def __init__(self, value):
         super().__init__()
@@ -353,7 +386,6 @@ class UI(Ui_MainWindow, QMainWindow):
         padded_image.paste(image, box=(left, top))
         return padded_image
 
-
     # show next image in list
     def prev_file_in_list(self):
         self.Extractor_next.show()
@@ -471,7 +503,6 @@ class UI(Ui_MainWindow, QMainWindow):
                                     os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
                         except:
                             break
-
 
     def scrollbar(self):
         try:
@@ -647,6 +678,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.Log_listwidget.addItem("start searching")
         self.Log_listwidget.scrollToBottom()
         image_hashes = {}
+        image_hashes2 = {}
         root = Tk()
         root.withdraw()
         root_folder = filedialog.askdirectory(title="select folder")
@@ -680,18 +712,25 @@ class UI(Ui_MainWindow, QMainWindow):
                         # If the hash already exists in the dictionary, it's a duplicate
                         if file_hash in image_hashes:
                             image_hashes[file_hash].append(file_path)
+                            str = file_path.split("\\")
+                            image_hashes2[file_hash].append(str[-2] + '\\' + str[-1] )
                         else:
                             image_hashes[file_hash] = [file_path]
+                            str = file_path.split("\\")
+                            image_hashes2[file_hash] = [str[-2] + '\\' + str[-1]]
                     self.progressBar.setValue(int((p/len_files)*80))
                 indx=indx+1
                 self.progressBar.setValue(100)
             # Create a list of duplicate images
             duplicates = []
+            self.sub_window.duplicates2 = []
             self.Log_listwidget.addItem("Comparing duplicate images")
             self.Log_listwidget.scrollToBottom()
-            for file_hash, file_paths in image_hashes.items():
+            for file_hash, file_paths in image_hashes2.items():
                 if len(file_paths) > 1:
+                    x=1
                     duplicates.append(file_paths)
+                    self.sub_window.duplicates2.append(image_hashes[file_hash])
             self.Add_items_to_table(duplicates)
             self.Log_listwidget.addItem("finish comparing")
             self.Log_listwidget.scrollToBottom()
@@ -787,7 +826,7 @@ class UI(Ui_MainWindow, QMainWindow):
 
         self.sub_window.c = self.tableWidget.currentColumn()
         self.sub_window.r = self.tableWidget.currentRow()
-        self.f_path = os.path.normpath(self.tableWidget.currentItem().text())
+        self.f_path = os.path.normpath(self.sub_window.duplicates2[self.sub_window.r ][self.sub_window.c])
         self.sub_window.label_2.setText("Image path: " + self.f_path)
         geo = self.sub_window.label.geometry().getRect()
         pixmap = QPixmap(self.f_path)
@@ -808,7 +847,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.label.setScaledContents(True)
         tmp = self.f_path.split("\\")
         self.sub_window.label_3.setText("Class lable: " + tmp[-2])
-
+        self.sub_window.label_3.setStyleSheet("color : red")
     def next_image(self):
         x=1
 

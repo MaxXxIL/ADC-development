@@ -14,11 +14,11 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_plot_image(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(644, 620)
+        MainWindow.resize(644, 662)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(0, 2, 501, 501))
+        self.label.setGeometry(QtCore.QRect(60, 10, 501, 501))
         self.label.setText("")
         self.label.setObjectName("label")
         self.Button_prev = QtWidgets.QPushButton(self.centralwidget)
@@ -36,6 +36,9 @@ class Ui_plot_image(object):
         self.label_3 = QtWidgets.QLabel(self.centralwidget)
         self.label_3.setGeometry(QtCore.QRect(90, 550, 361, 21))
         self.label_3.setObjectName("label_3")
+        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton.setGeometry(QtCore.QRect(280, 590, 111, 23))
+        self.pushButton.setObjectName("pushButton")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 644, 22))
@@ -56,6 +59,7 @@ class Ui_plot_image(object):
         self.Button_next.setText(_translate("MainWindow", "Next Image"))
         self.label_2.setText(_translate("MainWindow", "Image Path:"))
         self.label_3.setText(_translate("MainWindow", "Class Lable:"))
+        self.pushButton.setText(_translate("MainWindow", "Next row image"))
 
 
 if __name__ == "__main__":
