@@ -12,10 +12,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class Ui_plot_image(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(644, 662)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+    def setupUi(self, plot_image):
+        plot_image.setObjectName("plot_image")
+        plot_image.resize(644, 662)
+        self.centralwidget = QtWidgets.QWidget(plot_image)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(60, 10, 501, 501))
@@ -36,37 +36,41 @@ class Ui_plot_image(object):
         self.label_3 = QtWidgets.QLabel(self.centralwidget)
         self.label_3.setGeometry(QtCore.QRect(90, 550, 361, 21))
         self.label_3.setObjectName("label_3")
-        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton.setGeometry(QtCore.QRect(280, 590, 111, 23))
-        self.pushButton.setObjectName("pushButton")
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.Next_row_im = QtWidgets.QPushButton(self.centralwidget)
+        self.Next_row_im.setGeometry(QtCore.QRect(310, 590, 111, 23))
+        self.Next_row_im.setObjectName("Next_row_im")
+        self.Prev_row_im = QtWidgets.QPushButton(self.centralwidget)
+        self.Prev_row_im.setGeometry(QtCore.QRect(200, 590, 111, 23))
+        self.Prev_row_im.setObjectName("Prev_row_im")
+        plot_image.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(plot_image)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 644, 22))
         self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        plot_image.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(plot_image)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+        plot_image.setStatusBar(self.statusbar)
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi(plot_image)
+        QtCore.QMetaObject.connectSlotsByName(plot_image)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, plot_image):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.Button_prev.setText(_translate("MainWindow", "Prev image"))
-        self.Button_del.setText(_translate("MainWindow", "Delete Image"))
-        self.Button_next.setText(_translate("MainWindow", "Next Image"))
-        self.label_2.setText(_translate("MainWindow", "Image Path:"))
-        self.label_3.setText(_translate("MainWindow", "Class Lable:"))
-        self.pushButton.setText(_translate("MainWindow", "Next row image"))
+        plot_image.setWindowTitle(_translate("plot_image", "MainWindow"))
+        self.Button_prev.setText(_translate("plot_image", "Prev image"))
+        self.Button_del.setText(_translate("plot_image", "Delete Image"))
+        self.Button_next.setText(_translate("plot_image", "Next Image"))
+        self.label_2.setText(_translate("plot_image", "Image Path:"))
+        self.label_3.setText(_translate("plot_image", "Class Lable:"))
+        self.Next_row_im.setText(_translate("plot_image", "Next row image"))
+        self.Prev_row_im.setText(_translate("plot_image", "Prev row image"))
 
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+    plot_image = QtWidgets.QMainWindow()
+    ui = Ui_plot_image()
+    ui.setupUi(plot_image)
+    plot_image.show()
     sys.exit(app.exec_())

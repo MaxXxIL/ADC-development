@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>plot_image</class>
+ <widget class="QMainWindow" name="plot_image">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -92,10 +92,10 @@
      <string>Class Lable:</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="Next_row_im">
     <property name="geometry">
      <rect>
-      <x>280</x>
+      <x>310</x>
       <y>590</y>
       <width>111</width>
       <height>23</height>
@@ -103,6 +103,19 @@
     </property>
     <property name="text">
      <string>Next row image</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Prev_row_im">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>590</y>
+      <width>111</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Prev row image</string>
     </property>
    </widget>
   </widget>
