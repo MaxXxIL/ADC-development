@@ -3,42 +3,42 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import math
-from PyQt5.QtWidgets import QApplication ,QMainWindow ,QPushButton ,QWidget ,QListWidget ,QLabel ,QListView ,QMessageBox
-from Image_utility_tool import Ui_MainWindow
-from Image_plot import Ui_plot_image
-from PyQt5 import QtWidgets, QtCore
 import sys
 import shutil
 import os
 import hashlib
-import progressbar
-from PyQt5.QtGui import QPixmap, QPalette
-from tkinter import messagebox
-from PIL import Image , ImageDraw
-from tkinter import filedialog
-from tkinter import *
-from PIL import Image
 import pandas as pd
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import QRectF
-from PyQt5.QtGui import QColor, QPainter, QPen
-from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsScene, QGraphicsView
+from PyQt5.QtGui import QPixmap, QColor
+from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsScene, QGraphicsView, QTableWidgetItem, QMainWindow, QWidget, QMessageBox, QLabel
+
+from Image_utility_tool import Ui_MainWindow
+from Image_plot import Ui_plot_image
+from tkinter import messagebox, filedialog
+from tkinter import *
+from PIL import Image, ImageDraw
 
 class page(Ui_plot_image, QMainWindow):
     def __init__(self,table):
         super().__init__()
         self.setupUi(self)
         self.table = table
+        self.start_init()
+
+    def start_init(self):
         self.Button_next.clicked.connect(self.next_image)
         self.Button_prev.clicked.connect(self.prev_image)
         self.Button_del.clicked.connect(self.delete_image)
         self.Next_row_im.clicked.connect(self.Next_row_image)
         self.Prev_row_im.clicked.connect(self.Prev_row_image)
+        self.hist = 0
         self.r = None
         self.c = None
-
-
 
     def next_image(self):
         r_c = self.table.columnCount()
@@ -56,11 +56,12 @@ class page(Ui_plot_image, QMainWindow):
             self.Button_prev.show()
             self.Button_next.show()
         try:
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-
+            if not self.hist:
+                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            else:
+                self.update_image(os.path.normpath(self.duplicates2[self.r]))
         except:
             messagebox.showinfo(title='Error massage', message='empty cell')
-
 
     def prev_image(self):
         r_c = self.table.columnCount()
@@ -79,13 +80,27 @@ class page(Ui_plot_image, QMainWindow):
             self.Button_next.show()
 
         try:
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            if not self.hist:
+                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            else:
+                self.update_image(os.path.normpath(self.duplicates2[self.r]))
         except:
             messagebox.showinfo(title='Error massage', message='empty cell')
 
     def delete_image(self):
         try:
-            os.remove(self.f_path)
+            os.remove(self.curr_file)
+            table_len = self.table.columnCount()
+            cnt=0
+            self.table.setItem(self.r,self.c,QTableWidgetItem(''))
+            for i in range(table_len):
+                if self.table.item(self.r,i).text() != '':
+                    cnt += 1
+            if cnt < 2:
+                self.tableWidget.removeRow(self.r)
+
+
+            self.Next_row_image()
         except:
             messagebox.showinfo(title='Error massage', message='Image is not exist')
 
@@ -94,6 +109,7 @@ class page(Ui_plot_image, QMainWindow):
         pixmap = QPixmap(path)
         pixmap_resized = pixmap.scaled(geo[3], geo[3])
         self.label_2.setText("Image path: " + path)
+        self.curr_file = path
         self.label.setPixmap(pixmap_resized)
         self.label.setScaledContents(True)
         tmp = path.split("\\")
@@ -106,22 +122,15 @@ class page(Ui_plot_image, QMainWindow):
             self.c = self.table.currentColumn()
             self.r = self.table.currentRow()
 
-        if (self.r + 1)!= r_c:
+        if self.r != r_c:
             self.r = self.r +1
             try:
-                self.f_path = os.path.normpath(self.duplicates2[self.r][self.c])
-
-                geo = self.label.geometry().getRect()
-                pixmap = QPixmap(self.f_path)
-                pixmap_resized = pixmap.scaled(geo[3], geo[3])
-                self.label_2.setText("Image path: " + self.f_path)
-                self.label.setPixmap(pixmap_resized)
-                self.label.setScaledContents(True)
+                if not self.hist:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+                else:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
             except:
                 messagebox.showinfo(title='Error massage', message='empty cell')
-            tmp = self.f_path.split("\\")
-            self.label_3.setText("Class lable: " + tmp[-2])
-            self.label_3.setStyleSheet("color : red")
         else:
             messagebox.showinfo(title='Error massage', message='end of the image list')
 
@@ -134,45 +143,14 @@ class page(Ui_plot_image, QMainWindow):
         if self.r != 0:
             self.r = self.r - 1
             try:
-                self.f_path = os.path.normpath(self.duplicates2[self.r][self.c])
-                geo = self.label.geometry().getRect()
-                pixmap = QPixmap(self.f_path)
-                pixmap_resized = pixmap.scaled(geo[3], geo[3])
-                self.label_2.setText("Image path: " + self.f_path)
-                self.label.setPixmap(pixmap_resized)
-                self.label.setScaledContents(True)
+                if not self.hist:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+                else:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
             except:
                 messagebox.showinfo(title='Error massage', message='empty cell')
-            tmp = self.f_path.split("\\")
-            self.label_3.setText("Class lable: " + tmp[-2])
-            self.label_3.setStyleSheet("color : red")
         else:
             messagebox.showinfo(title='Error massage', message='head of the image list')
-
-class ValueItem(QGraphicsItem):
-    def __init__(self, value):
-        super().__init__()
-        self._value = value
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setFlag(QGraphicsItem.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
-
-    def boundingRect(self):
-        return QRectF(-20, -20, 40, 40)
-
-    def paint(self, painter, option, widget=None):
-        painter.setBrush(QColor(255, 0, 0))
-        painter.drawRect(-20, -20, 40, 40)
-        painter.drawText(QRectF(-20, -20, 40, 40), str(self._value))
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.ItemPositionChange:
-            print(f"Position changed to {value}")
-        return super().itemChange(change, value)
-
-    def setValue(self, value):
-        self._value = value
-        self.update()
 
 class App(QWidget):
 
@@ -211,16 +189,14 @@ class App(QWidget):
         self.close()
         return x
 
+
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-
         self.init_button_actions()
-
         self.sub_window = page(self.tableWidget)
         self.Image_view = App()
-
     # initialize all functions
     def init_button_actions(self):
         self.setWindowTitle("ADC utility tool")
@@ -236,7 +212,6 @@ class UI(Ui_MainWindow, QMainWindow):
         self.hist_lower.hide()
         self.horizontalSlider_2.hide()
         self.horizontalSlider.hide()
-        self.graphicsView.hide()
         self.radioButton.clicked.connect(self.offset_set)
         self.source_button.clicked.connect(self.select_s)
         self.destination_button.clicked.connect(self.select_d)
@@ -254,9 +229,9 @@ class UI(Ui_MainWindow, QMainWindow):
 
     def histogram_view(self):
         if self.checkBox_2.isChecked():
+            self.sub_window.hist = 1
             self.horizontalSlider.show()
             self.horizontalSlider_2.show()
-            self.graphicsView.show()
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 530, 591))
             self.seek_identical.setText('Analyz images backgroung')
             self.hist_min.show()
@@ -266,8 +241,8 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_upper.show()
             self.hist_lower.show()
         else:
+            self.sub_window.hist = 0
             self.horizontalSlider.hide()
-            self.graphicsView.hide()
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 881, 591))
             self.seek_identical.setText('Find identical images')
             self.hist_min.hide()
@@ -281,7 +256,6 @@ class UI(Ui_MainWindow, QMainWindow):
     #zoom in scroll
     def wheelEvent(self, event):
         if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            numPixels = event.pixelDelta()
             scrollDistance = event.angleDelta().y()
             numDegrees = event.angleDelta() / 8
             numSteps = numDegrees / 15
@@ -290,7 +264,6 @@ class UI(Ui_MainWindow, QMainWindow):
             else:
                 zoom_indx = numSteps.manhattanLength()
             s_indx = self.horizontalScrollBar.value()
-            #self.horizontalScrollBar.
             self.horizontalScrollBar.setValue(s_indx + zoom_indx)
 
     # mouse clicked on image
@@ -299,30 +272,32 @@ class UI(Ui_MainWindow, QMainWindow):
             if self.destination_TextEdit.toPlainText() == "":
                 messagebox.showinfo(title='Error massage', message='please select destination folder')
             else:
-                rect = self.label_5.geometry().getRect()
-                x = event.x() - rect[0] -5
-                y = event.y() - rect[1] - 45
-                img_dim = Image.open(self.current_image_path).size
-                x_new = (img_dim[0]/rect[2])*x
-                y_new = (img_dim[1]/rect[3])*y
-                offset_y  = int((img_dim[1] / 2 ) - y_new)
-                offset_x = int((img_dim[0] / 2) - x_new)
-                top = math.ceil((img_dim[0]))
-                left = math.ceil((img_dim[1]))
-                img = Image.open(self.current_image_path)
-                img1 = Image.new(img.mode, (img_dim[0] + abs(offset_x), img_dim[1] + abs(offset_y)))
-                img1.paste(img, (0 + offset_x, 0 + offset_y))
-                img2 = img1.crop((0,0,img_dim[0],img_dim[1]))
+                img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
                 tmp_str = self.current_image_path.split('\\')
-                img_name=tmp_str[-1]
+                img_name = tmp_str[-1]
                 while os.path.exists(self.destination_path + '\\_' + img_name) or os.path.exists(self.destination_path + '\\' + img_name):
                     tmp = img_name.split(".jpeg")
                     img_name = tmp[0] + '_' + '.jpeg'
                 img2.save(self.destination_path + '\\_' + img_name)
-                self.Log_listwidget.addItem(img_name + ' image was saved')
-                self.Log_listwidget.scrollToBottom()
+                self.write_to_logview(img_name + ' image was saved')
                 self.next_file_in_list()
-                # complete saving and next image ------------------- to dooooo
+
+
+    def center_and_crop_image(self,img_rect,cuur_path,event):
+        x = event.x() - img_rect[0] - 5
+        y = event.y() - img_rect[1] - 45
+        img_dim = Image.open(cuur_path).size
+        x_new = (img_dim[0] / img_rect[2]) * x
+        y_new = (img_dim[1] / img_rect[3]) * y
+        offset_y = int((img_dim[1] / 2) - y_new)
+        offset_x = int((img_dim[0] / 2) - x_new)
+        top = math.ceil((img_dim[0]))
+        left = math.ceil((img_dim[1]))
+        img = Image.open(cuur_path)
+        img1 = Image.new(img.mode, (img_dim[0] + abs(offset_x), img_dim[1] + abs(offset_y)))
+        img1.paste(img, (0 + offset_x, 0 + offset_y))
+        img2 = img1.crop((0, 0, img_dim[0], img_dim[1]))
+        return img2
 
     #show offset fields
     def offset_set(self):
@@ -346,8 +321,7 @@ class UI(Ui_MainWindow, QMainWindow):
             self.current_image_path = list[file_indx]
             self.f_object[1] = file_indx
             l = len(list)
-            self.Log_listwidget.addItem("next image " + str(file_indx) + "/" + str(l))
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
             if l - 1 == file_indx :
                 self.Extractor_next.hide()
             self.image_changing(self.current_image_path)
@@ -411,8 +385,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.current_image_path = list[file_indx]
         self.f_object[1] = file_indx
         l = len(list)
-        self.Log_listwidget.addItem("next image " + str(file_indx) + "/" + str(l))
-        self.Log_listwidget.scrollToBottom()
+        self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
         if file_indx == 0:
             self.Extractor_next.hide()
         self.image_changing(self.current_image_path)
@@ -421,120 +394,107 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_5.setPixmap(pixmap)
 
+    def write_to_logview(self, str1):
+        self.Log_listwidget.addItem(str1)
+        self.Log_listwidget.scrollToBottom()
+
     #seperate images into subfolders
     def seperate_images(self):
-        widgets = ['Loading: ', progressbar.AnimatedMarker()]
-        bar = progressbar.ProgressBar(widgets=widgets).start()
         self.progressBar.setValue(0)
         path = self.Source_path
+        #Simple seperation without recipe
         if not self.checkBox.isChecked():
             try:
                 N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
-                self.Log_listwidget.addItem("start seperation into subfolders - each folder contains: " + str(N))
-                self.Log_listwidget.scrollToBottom()
-
-                self.plainTextEdit_2.setPlainText('in progress')
-                counter = 0
-                folder_name = "folder"
-                folder_path = os.path.join(self.destination_path, folder_name + str(counter))
+                self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
+                folder_num = 0
+                #create the first folder0
+                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
                 os.makedirs(folder_path)
-
+                #loop throught all subfolders in path
                 for root, dirs, files in os.walk(path):
                     l  = len(files)
                     for i ,file in enumerate(files):
                         self.progressBar.setValue(i/l)
                         if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+                            #check if folder is full to max images
                             if len(os.listdir(folder_path)) >= N:
-                                counter += 1
-                                folder_name = "folder"
-                                folder_path = os.path.join(self.destination_path, folder_name + str(counter))
+                                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
                                 os.makedirs(folder_path)
-                                self.Log_listwidget.addItem("subfolder: " + str(counter) + "ready")
+                                self.write_to_logview("subfolder: " + str(folder_num) + "ready")
+                                folder_num += 1
                             shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
-                self.plainTextEdit_2.setPlainText('finish')
-                self.Log_listwidget.addItem("finished seperat into: " + str(counter) + "subfolders" )
-                self.Log_listwidget.scrollToBottom()
+                self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
             except:
                 QMessageBox.about(self, "Error msg", "please selects input folder")
+
+        # seperation with recipe
         else:
-            #path = 'A:/bes data/X5 recipe/a/BES-Reports-for-classification/BA059PD-TSV-N-BES/Setup1/4244209'
-            #self.destination_path ='A:\\bes data\\X5 recipe\\pre_db'
-            path = self.Source_TextEdit.toPlainText()
-            l = len(path)+1
-
-            for root, dirs, files in os.walk(path):
-                folder_hir_list = []
-                copy_path = self.destination_path
-                if 'ADC' in dirs:
-
-                    tmp_str1 = root[l:]
-                    tmp_str = tmp_str1.split('\\')
-                    for string in tmp_str:
-                        if not os.path.exists(copy_path + '\\' + string):
-                            folder_hir_list.append(string)
-                            #os.mkdir(copy_path + '\\' + string)
-                        copy_path = os.path.normpath(copy_path + '\\' + string)
-                    copy_path =os.path.normpath(copy_path + '\\ADC')
-                    #os.mkdir(copy_path)
-                    file_list = os.listdir(root + '\\ADC')
-                    dataframe1 = pd.read_csv(root + '\\ADC\\' + 'Surface2Bump.csv')
-                    #dataframe1.sort_values('Recipe')
-                    img_path_list =  dataframe1['defect_key'].values
-                    recipe_list = dataframe1['Recipe'].values
-                    indx = 0
-                    p = self.destination_path
-                    for i,file in enumerate(img_path_list):
-                        try:
-                            curr_path = os.path.normpath(self.destination_path + '\\' + str(recipe_list[i]) + '\\' + tmp_str1)
-                            if not os.path.exists(curr_path):
+            try:
+                l = len(path)+1
+                for root, dirs, files in os.walk(path):
+                    if 'ADC' in dirs:
+                        tmp_str1 = root[l:]
+                        tmp_str = tmp_str1.split('\\')
+                        dataframe1 = pd.read_csv(root + '\\ADC\\' + 'Surface2Bump.csv')
+                        img_path_list =  dataframe1['defect_key'].values
+                        recipe_list = dataframe1['Recipe'].values
+                        for i,file in enumerate(img_path_list):
+                            try:
+                                curr_path = os.path.normpath(self.destination_path + '\\' + str(recipe_list[i]) + '\\' + tmp_str1)
                                 if not os.path.exists(curr_path):
-                                    if not os.path.exists(self.destination_path + '\\' + str(recipe_list[i])):
-                                        os.mkdir(self.destination_path + '\\' + str(recipe_list[i]))
-                                tmp_path = self.destination_path + '\\' + str(recipe_list[i])
-                                for folder in tmp_str:
-                                    if not os.path.exists(tmp_path + '\\' +  folder):
-                                        os.mkdir(tmp_path + '\\' +  folder)
-                                    tmp_path = tmp_path + '\\' +  folder
-                                os.mkdir(tmp_path + '\\ADC\\')
+                                    if not os.path.exists(curr_path):
+                                        if not os.path.exists(self.destination_path + '\\' + str(recipe_list[i])):
+                                            os.mkdir(self.destination_path + '\\' + str(recipe_list[i]))
+                                    tmp_path = self.destination_path + '\\' + str(recipe_list[i])
+                                    for folder in tmp_str:
+                                        if not os.path.exists(tmp_path + '\\' +  folder):
+                                            os.mkdir(tmp_path + '\\' +  folder)
+                                        tmp_path = tmp_path + '\\' +  folder
+                                    os.mkdir(tmp_path + '\\ADC\\')
+                                    #copy ADC folder files
+                                    self.Copy_ADC_folder_files(root,str(recipe_list[i]),tmp_str1,self.destination_path)
+                                img = cv2.imread(os.path.normpath(root + '\\ADC\\' + file))
+                                avg_pixel = cv2.mean(img)[0]
+                                #check if image is not blank
+                                if avg_pixel > 10:
+                                    shutil.copyfile(os.path.normpath(root + '\\ADC\\' + file),
+                                        os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
+                            except:
+                                break
+            except:
+                QMessageBox.about(self, "Error msg", "please selects output folder")
 
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\image_flow.csv'), os.path.normpath(
-                                    self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\image_flow.csv'))
+    def Copy_ADC_folder_files(self,root,recipe,local_path,destination_path):
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_flow.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_flow.csv'))
 
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\image_view.csv'), os.path.normpath(
-                                    self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\image_view.csv'))
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_view.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_view.csv'))
 
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\ManReClassify.ini'), os.path.normpath(
-                                    self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\ManReClassify.ini'))
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\ManReClassify.ini'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\ManReClassify.ini'))
 
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\run_details.json'), os.path.normpath(
-                                    self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\run_details.json'))
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\run_details.json'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\run_details.json'))
 
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\Surface2Bump.csv'), os.path.normpath(
-                                    self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\Surface2Bump.csv'))
-                                indx = int(recipe_list[i])
-
-                            img = cv2.imread(os.path.normpath(root + '\\ADC\\' + file))
-                            avg_pixel = cv2.mean(img)[0]
-                            if avg_pixel > 10:
-                                shutil.copyfile(os.path.normpath(root + '\\ADC\\' + file),
-                                    os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
-                        except:
-                            break
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\Surface2Bump.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\Surface2Bump.csv'))
 
     def scrollbar(self):
-        try:
-            list = self.f_object[0]
-            file_indx = self.f_object[1]
-            self.current_image_path = list[file_indx]
-            self.image_changing(self.current_image_path)
-            pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-            geo = self.label_5.geometry().getRect()
-            pixmap = pixmap.scaled(geo[-1], geo[-1])
-            self.label_5.setPixmap(pixmap)
-        except:
-            x=1
-    #select source folder and pre requsits
+            try:
+                list = self.f_object[0]
+                file_indx = self.f_object[1]
+                self.current_image_path = list[file_indx]
+                self.image_changing(self.current_image_path)
+                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+                geo = self.label_5.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_5.setPixmap(pixmap)
+            except:
+                x=1
 
+    #select source folder and pre requsits
     def select_s(self):
         self.Source_listWidget.clear()
         root = Tk()
@@ -588,15 +548,14 @@ class UI(Ui_MainWindow, QMainWindow):
     # convert images
     def image_convert_and_crop(self):
         try:
-            self.Log_listwidget.addItem("start converting and cropping")
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("start converting and cropping")
+
             D_path = filedialog.askdirectory(title="select output folder")
             self.destination_listWidget.addItem("Start convertion")
             new_width =int(self.output_X_size.toPlainText())
             new_height =int(self.output_Y_size.toPlainText())
             file_list=os.listdir(self.Source_path)
-            self.Log_listwidget.addItem("ploting example of foxed offset image")
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("ploting example of foxed offset image")
             if self.radioButton.isChecked():
                 for root, dirs, files in os.walk(self.Source_path):
                     for file_ in file_list:
@@ -608,7 +567,7 @@ class UI(Ui_MainWindow, QMainWindow):
                             img1.save(D_path +'\\' + file_)
             #if self.Image_view.messagebox(os.getcwd() +'/temp.jpeg'):
             else:
-                self.Log_listwidget.addItem("staring to convert images")
+                self.write_to_logview("staring to convert images")
                 for folder in file_list:
                     if os.path.isdir(folder):
                         curr_f=D_path + '/' + folder
@@ -634,7 +593,7 @@ class UI(Ui_MainWindow, QMainWindow):
                                         try:
                                             img1.save(curr_f + '/' + new_im_name + '.jpeg')
                                         except:
-                                            self.log_listWidget.addItem("An exception occurred")
+                                            self.write_to_logview("An exception occurred")
                     else:
                         format = folder.split('.')
                         if format[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
@@ -653,9 +612,8 @@ class UI(Ui_MainWindow, QMainWindow):
                                 try:
                                     img1.save(D_path + '/' + new_im_name + '.jpeg')
                                 except:
-                                    self.log_listWidget.addItem("An exception occurred")
-            self.Log_listwidget.addItem("finish convert")
-            self.Log_listwidget.scrollToBottom()
+                                    self.write_to_logview("An exception occurred")
+            self.write_to_logview("finish convert")
         except:
             messagebox.showinfo(title='Error massage', message='no size')
 
@@ -691,22 +649,23 @@ class UI(Ui_MainWindow, QMainWindow):
         self.tableWidget.setSortingEnabled(1)
 
     def find_duplicates(self):
-        # Create a dictionary to store image hashes and their corresponding file paths
-        self.Log_listwidget.addItem("start searching")
-        self.Log_listwidget.scrollToBottom()
+        self.Log_listwidget.clear()
+        self.write_to_logview("start searching")
+
+        #image_hashes - containing real path
         image_hashes = {}
+        #image_hashes - containing last folder name (class)
         image_hashes2 = {}
+
         root = Tk()
         root.withdraw()
         root_folder = filedialog.askdirectory(title="select folder")
-        widgets = ['Loading: ', progressbar.AnimatedMarker()]
-        bar = progressbar.ProgressBar(widgets=widgets).start()
         self.progressBar.setValue(0)
         len_dirs = 0
+        # Create a dictionary to store image hashes and their corresponding file paths
         if not self.checkBox_2.isChecked():
             # Walk through all files in the root folder and its subfolders
-            self.Log_listwidget.addItem("Walk through all files in the root folder and its subfolders")
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("Walk through all files in the root folder and its subfolders")
 
             obj = os.listdir(root_folder)
             indx = 1
@@ -716,11 +675,13 @@ class UI(Ui_MainWindow, QMainWindow):
             factor = 100/indx
             offset = 0
             tmp_root = root_folder
+            folder_indx = 1
             for root, dirs, files in os.walk(root_folder):
                 len_files=len(files)
                 if len_dirs == 0:
                     len_dirs=len(dirs)+1
                 for p, file in enumerate(files):
+
                     # Get the file path
                     file_path = os.path.join(root, file)
                     if file_path.endswith(".jpeg"):
@@ -737,32 +698,35 @@ class UI(Ui_MainWindow, QMainWindow):
                         # If the hash already exists in the dictionary, it's a duplicate
                         if file_hash in image_hashes:
                             image_hashes[file_hash].append(file_path)
-                            str = file_path.split("\\")
-                            image_hashes2[file_hash].append(str[-2] + '\\' + str[-1] )
+                            t_str = file_path.split("\\")
+                            image_hashes2[file_hash].append(t_str[-2] + '\\' + t_str[-1] )
                         else:
                             image_hashes[file_hash] = [file_path]
-                            str = file_path.split("\\")
-                            image_hashes2[file_hash] = [str[-2] + '\\' + str[-1]]
+                            t_str = file_path.split("\\")
+                            image_hashes2[file_hash] = [t_str[-2] + '\\' + t_str[-1]]
 
                     if tmp_root != root:
                         offset = offset + factor
                         tmp_root = root
-                    precentage = int(((p + 1) / len_files) * factor) + offset
+                        str_folder_indx = "{}".format(folder_indx)
+                        str_folder_max = "{}".format(indx)
+                        tmp_str = "folder: " + str_folder_indx + "/" + str_folder_max
+                        self.write_to_logview(tmp_str)
+                        folder_indx += 1
+                    precentage = int(((p + 1) / len_files) * 100)
                     self.progressBar.setValue(precentage)
             self.progressBar.setValue(100)
             # Create a list of duplicate images
             duplicates = []
             self.sub_window.duplicates2 = []
-            self.Log_listwidget.addItem("Comparing duplicate images")
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("Comparing duplicate images")
             for file_hash, file_paths in image_hashes2.items():
                 if len(file_paths) > 1:
                     x=1
                     duplicates.append(file_paths)
                     self.sub_window.duplicates2.append(image_hashes[file_hash])
             self.Add_items_to_table(duplicates)
-            self.Log_listwidget.addItem("finish comparing")
-            self.Log_listwidget.scrollToBottom()
+            self.write_to_logview("finish comparing")
         else:
             img_lst = []
             med_lst = []
@@ -777,82 +741,94 @@ class UI(Ui_MainWindow, QMainWindow):
                     if file_path.endswith(".jpeg"):
                         img = cv2.imread(file_path, 0)
                         array_vec = np.array(img)
-                        med_hist = np.median(array_vec)
+                        med_hist = int(np.median(array_vec))
                         img_lst.append(file_path)
-                        med_lst.append(str(med_hist))
+                        med_lst.append(med_hist)
                     self.progressBar.setValue(int((p / len_files) * 80))
-            arr = np.array([med_lst,img_lst]).T
-            df = pd.DataFrame(arr, columns=['hist_med', 'img path'])
-            df.sort_values('hist_med')
-            sorted_arr =df.sort_values('hist_med')
-            self.val_list = df['hist_med'].astype(float)
-            self.path_list = df['img path']
-            self.candidate_list=[]
 
-            self.horizontalSlider.setMinimum(int(self.val_list.min())/2.55)
-            self.horizontalSlider.setMaximum(int(self.val_list.max())/2.55 + 1)
-            self.horizontalSlider_2.setMinimum(int(self.val_list.min())/2.55)
-            self.horizontalSlider_2.setMaximum(int(self.val_list.max())/2.55 + 1)
-            self.hist_max.setText('max:' + self.val_list.max())
-            self.hist_min.setText('min:' + self.val_list.min())
+            arr = np.array([med_lst,img_lst]).T
+            self.df = pd.DataFrame(arr, columns=['hist_med', 'img path'])
+
+            sorted_arr =self.df.sort_values('hist_med')
+            self.val_list = sorted_arr['hist_med'].astype(int)
+            self.path_list = sorted_arr['img path']
+
+            max_v = max(self.val_list)
+            min_v = min(self.val_list)
+            self.Display_hist(self.val_list,min_v,max_v)
+
+    def Display_hist(self,arr,th_low,th_high):
+        arr_max = max(arr)
+        arr_min = min(arr)
+        self.horizontalSlider_2.setMaximum(arr_max)
+        self.horizontalSlider_2.setMinimum(arr_min)
+        self.horizontalSlider_2.setValue(arr_max)
+        self.hist_min.setText("Min: " + str(arr_min))
+        self.hist_max.setText("Max: " + str(arr_max))
+        self.horizontalSlider.setMaximum(arr_max)
+        self.horizontalSlider.setMinimum(arr_min)
+        self.horizontalSlider.setValue(arr_min)
+        self.plot_hist(th_low,th_high)
+
+    def plot_hist(self,th_low,th_high):
+        counts, bins = np.histogram(self.val_list)
+        plt.clf()
+        plt.cla()
+        plt.hist(bins[:-1], bins, weights=counts)
+        plt.xlabel('Values')
+        plt.ylabel('Frequency')
+        plt.title('Histogram of AVG GL')
+        plt.axvline(x=th_low, color='r', linestyle='--')
+        plt.axvline(x=th_high, color='r', linestyle='--')
+        plt.savefig('histogram.png')
+        pixmap = QPixmap('histogram.png')
+        geo = self.label_7.geometry().getRect()
+        pixmap = pixmap.scaled(geo[-1], geo[-1])
+        self.label_7.setPixmap(pixmap)
 
     def lower_th_display(self):
         outlier_list=[]
-        self.hist_value.setText('value:' + str(int(self.horizontalSlider.value()*2.55)))
-        if self.horizontalSlider.value()>self.horizontalSlider_2.value():
-            self.horizontalSlider_2.setValue(self.horizontalSlider.value()+1)
-        th = int(self.horizontalSlider.value() * 2.55)
-        th2 = int(self.horizontalSlider_2.value() * 2.55)
-        l = len(self.val_list)
-        for m in range(l):
-            if float(self.val_list[m]) < th:
-                outlier_list.append(self.path_list[m])
-            if float(self.val_list[m]) > th2:
-                outlier_list.append(self.path_list[m])
-        out_len = len(outlier_list)
-        self.tableWidget.clearContents()
-        self.tableWidget.setRowCount(out_len)
-        self.tableWidget.setColumnCount(1)
-        self.tableWidget.setHorizontalHeaderLabels(['path'])
-        for i,path in enumerate(outlier_list):
-            self.tableWidget.setItem(i-1,1,QtWidgets.QTableWidgetItem(path))
-
-
-            #self.hist_value_2.setText(str(int(self.hist_value.text() +1)))
+        self.hist_value.setText("Value: " + str(self.horizontalSlider.value()))
+        self.plot_hist(self.horizontalSlider.value(),self.horizontalSlider_2.value())
+        self.find_outliers()
 
     def upper_th_display(self):
         outlier_list = []
-        self.hist_value_2.setText('value:' + str(int(self.horizontalSlider_2.value()*2.55)))
-        if self.horizontalSlider.value()>self.horizontalSlider_2.value():
-            self.horizontalSlider.setValue(self.horizontalSlider_2.value()-1)
-        th = int(self.horizontalSlider.value() * 2.55)
-        th2 = int(self.horizontalSlider_2.value() * 2.55)
-        l = len(self.val_list)
-        for m in range(l):
-            if int(float(self.val_list[m])) < th:
-                outlier_list.append(self.path_list[m])
-            if int(float(self.val_list[m])) > th2:
-                outlier_list.append(self.path_list[m])
-        out_len = len(outlier_list)
-        self.tableWidget.clearContents()
-        self.tableWidget.setRowCount(out_len)
+        self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
+        self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
+        self.find_outliers()
+
+    def find_outliers(self):
+        df = pd.DataFrame(self.val_list, columns=['hist_med'])
+        indices1 = list(df.index[df['hist_med'] < self.horizontalSlider.value()].values)
+        indices2 = list(df.index[df['hist_med'] > self.horizontalSlider_2.value()].values)
+        indices = indices1 + indices2
+        outlier_list=[]
+        self.sub_window.duplicates2 = []
         self.tableWidget.setColumnCount(1)
-        self.tableWidget.setHorizontalHeaderLabels(['path'])
-        for i, path in enumerate(outlier_list):
-            self.tableWidget.setItem(i - 1, 1, QtWidgets.QTableWidgetItem(path))
+        self.tableWidget.setColumnWidth(0, 450)
+        for i in range(len(indices)):
+            img_path = self.df.iloc[int(indices[i]), 1]
+            str_tmp = QtWidgets.QTableWidgetItem(self.df.iloc[int(indices[i]), 1])
+            self.sub_window.duplicates2.append(img_path)
+            outlier_list.append(str_tmp)
+        self.tableWidget.setRowCount(len(outlier_list))
+        if outlier_list:
+            for j,item in enumerate(outlier_list):
+                self.tableWidget.setItem(j, 0, item)
+            self.tableWidget.setColumnCount(1)
+            #self.sub_window.duplicates2.append(self.df.iloc[i, 1])
+        #self.Add_items_to_table(self.sub_window.duplicates2)
+        x=1
+        #indices = df.index[df['hist_med'] < self.horizontalSlider.value()]
+        #indices = self.val_list.index[self.val_list > self.horizontalSlider_2.value()]
 
-        scene = QGraphicsScene()
-        self.graphicsView.setScene(scene)
-        it = ValueItem(5)
-        scene.addItem(it)
-        #view = self.graphicsView(scene)
-        #view.show()
-
+    def list_filter_hist(self):
+        x=1
     def derive_hist_imges(self):
         x=1
 
     def table_clicked(self):
-
         self.sub_window.c = self.tableWidget.currentColumn()
         self.sub_window.r = self.tableWidget.currentRow()
         self.sub_window.show()
@@ -866,8 +842,11 @@ class UI(Ui_MainWindow, QMainWindow):
         else:
             self.sub_window.Button_prev.show()
             self.sub_window.Button_next.show()
-        self.sub_window.update_image(os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
-
+        if not self.checkBox_2.isChecked():
+            self.sub_window.update_image(os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
+        else:
+            self.sub_window.update_image(
+                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
     def next_image(self):
         x=1
 
