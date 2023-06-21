@@ -394,7 +394,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>find identical images</string>
+       <string>Start searching</string>
       </property>
      </widget>
      <widget class="QTableWidget" name="tableWidget">
@@ -547,6 +547,42 @@
         <y>220</y>
         <width>631</width>
         <height>431</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_3">
+      <property name="geometry">
+       <rect>
+        <x>840</x>
+        <y>50</y>
+        <width>131</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Find similiar images</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="similar_groups">
+      <property name="geometry">
+       <rect>
+        <x>740</x>
+        <y>120</y>
+        <width>411</width>
+        <height>21</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>760</x>
+        <y>250</y>
+        <width>401</width>
+        <height>361</height>
        </rect>
       </property>
       <property name="text">
