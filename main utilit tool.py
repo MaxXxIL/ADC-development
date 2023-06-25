@@ -20,9 +20,10 @@ from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsScene, QGraphi
 from Image_utility_tool import Ui_MainWindow
 from Image_plot import Ui_plot_image
 from tkinter import messagebox, filedialog
-from tkinter import *
+import tkinter as tk
 from PIL import Image, ImageDraw
 from PIL import Image
+
 class page(Ui_plot_image, QMainWindow):
     def __init__(self,table):
         super().__init__()
@@ -31,36 +32,53 @@ class page(Ui_plot_image, QMainWindow):
         self.start_init()
 
     def start_init(self):
-        self.Button_next.clicked.connect(self.next_image)
-        self.Button_prev.clicked.connect(self.prev_image)
-        self.Button_del.clicked.connect(self.delete_image)
-        self.Next_row_im.clicked.connect(self.Next_row_image)
-        self.Prev_row_im.clicked.connect(self.Prev_row_image)
+        self.Button_next.clicked.connect(self.Page_event)
+        self.Button_prev.clicked.connect(self.Page_event)
+        self.Button_del.clicked.connect(self.Page_event)
+        self.Next_row_im.clicked.connect(self.Page_event)
+        self.Prev_row_im.clicked.connect(self.Page_event)
         self.hist = 0
         self.r = None
         self.c = None
 
-    def next_image(self):
-        r_c = self.table.columnCount()
+    def Page_event(self):
+        column_max = self.table.columnCount()
+        sender = app.sender()
         if self.r == None and self.c == None:
             self.c = self.table.currentColumn()
             self.r = self.table.currentRow()
-        self.c = self.c +1
-        if self.c + 1 == self.column_max :
-           self.Button_prev.show()
-           self.Button_next.hide()
-        elif self.c == 0:
-            self.Button_prev.hide()
-            self.Button_next.show()
-        else:
-            self.Button_prev.show()
-            self.Button_next.show()
+        if sender.objectName() == "Button_del":
+            self.delete_image()
+        elif sender.objectName() == "Button_next":
+            self.next_image()
+        elif sender.objectName() == "Button_prev":
+            self.prev_image()
+        elif sender.objectName() == "Prev_row_im":
+            self.Prev_row_image()
+        elif sender.objectName() == "Next_row_im":
+            self.Next_row_image()
+
+    def next_image(self):
         try:
-            if not self.hist:
-                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            column_max = self.table.columnCount()
+            if self.r == None and self.c == None:
+                self.c = self.table.currentColumn()
+                self.r = self.table.currentRow()
+            if self.c  == column_max :
+               self.Button_prev.show()
+               self.Button_next.hide()
             else:
-                self.update_image(os.path.normpath(self.duplicates2[self.r]))
+                if self.c + 1 >= column_max:
+                    self.Button_next.hide()
+                else:
+                    self.Button_next.show()
+                self.c = self.c + 1
+                self.Button_prev.show()
+
+            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+
         except:
+            self.c = self.c - 1
             messagebox.showinfo(title='Error massage', message='empty cell')
 
     def prev_image(self):
@@ -68,22 +86,20 @@ class page(Ui_plot_image, QMainWindow):
         if self.r == None and self.c == None:
             self.c = self.table.currentColumn()
             self.r = self.table.currentRow()
-        self.c = self.c -1
-        if self.c + 1 == self.column_max :
-           self.Button_prev.show()
-           self.Button_next.hide()
-        elif self.c == 0:
+
+        if self.c  == 0:
             self.Button_prev.hide()
             self.Button_next.show()
         else:
-            self.Button_prev.show()
-            self.Button_next.show()
-
-        try:
-            if not self.hist:
-                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            if self.c - 1 == 0 :
+                self.Button_prev.hide()
             else:
-                self.update_image(os.path.normpath(self.duplicates2[self.r]))
+                self.Button_prev.show()
+            self.c = self.c - 1
+            self.Button_next.show()
+        try:
+            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+
         except:
             messagebox.showinfo(title='Error massage', message='empty cell')
 
@@ -228,21 +244,23 @@ class UI(Ui_MainWindow, QMainWindow):
         self.destination_button.clicked.connect(self.select_d)
         self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
         self.Star_seperate.clicked.connect(self.seperate_images)
-        self.seek_identical.clicked.connect(self.find_duplicates)
+        self.seek_identical.clicked.connect(self.start_analysis)
         self.tableWidget.clicked.connect(self.table_clicked)
         self.Extractor_next.clicked.connect(self.next_file_in_list)
         self.Extractor_prev.clicked.connect(self.prev_file_in_list)
-        self.checkBox_2.clicked.connect(self.histogram_view)
+        self.hist_analysis.clicked.connect(self.histogram_view)
         self.horizontalSlider.valueChanged.connect(self.lower_th_display)
         self.horizontalSlider_2.valueChanged.connect(self.upper_th_display)
         self.horizontalScrollBar.valueChanged.connect(self.scrollbar)
         self.scale_list=np.linspace(0.1,1,num=50)
-        self.checkBox_3.clicked.connect(self.similar_images)
+        self.similar_analysis.clicked.connect(self.similar_images)
         self.similar_groups.activated.connect(self.show_group)
+        self.similar_groups.hide()
 
     def similar_images(self):
-        if self.checkBox_3.isChecked():
-            self.checkBox_2.setChecked(False)
+        if self.similar_analysis.isChecked():
+            self.similar_groups.show()
+            self.hist_analysis.setChecked(False)
             self.sub_window.hist = 0
             self.horizontalSlider.hide()
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 700, 591))
@@ -254,13 +272,16 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_upper.hide()
             self.hist_lower.hide()
             self.horizontalSlider_2.hide()
+        else:
+            self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1100, 591))
+            self.similar_groups.hide()
 
     def histogram_view(self):
-        if self.checkBox_2.isChecked():
+        if self.hist_analysis.isChecked():
             self.sub_window.hist = 1
             self.horizontalSlider.show()
             self.horizontalSlider_2.show()
-            self.tableWidget.setGeometry(QtCore.QRect(20, 70, 530, 591))
+            self.tableWidget.setGeometry(QtCore.QRect(20, 70, 700, 591))
             self.seek_identical.setText('Analyz images backgroung')
             self.hist_min.show()
             self.hist_max.show()
@@ -268,11 +289,12 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_value_2.show()
             self.hist_upper.show()
             self.hist_lower.show()
-            self.checkBox_3.setChecked(False)
+            self.similar_analysis.setChecked(False)
+            self.similar_groups.hide()
         else:
             self.sub_window.hist = 0
             self.horizontalSlider.hide()
-            self.tableWidget.setGeometry(QtCore.QRect(20, 70, 881, 591))
+            self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1100, 591))
             self.seek_identical.setText('Find identical images')
             self.hist_min.hide()
             self.hist_max.hide()
@@ -360,92 +382,12 @@ class UI(Ui_MainWindow, QMainWindow):
         except:
             QMessageBox.about(self, "info massage", "no more images")
 
-    def find_similar_images(self, folder_path, threshold):
-        self.Log_listwidget.clear()
-        self.write_to_logview("start searching")
-
-        image_files = os.listdir(folder_path)
-        similar_images = []
-        similar_images_dict = {}
-        groups = []
-        window_x, window_y, window_w, window_h = (200, 200, 400, 400)
-        window_x2, window_y2, window_w2, window_h2 = (200, 200, 400, 400)
-        list_len = len(image_files)
-        for i in range(list_len):
-            self.write_to_logview("comparing image :" + str(i))
-            self.progressBar.setValue(int(100*i/list_len))
-            similar_group =[]
-            sift = cv2.SIFT_create()
-            img1 = cv2.imread(os.path.join(folder_path, image_files[i]), cv2.IMREAD_GRAYSCALE)
-            #img1_window = img1[window_y:window_y + window_h, window_x:window_x + window_w]
-            if image_files[i].split(".")[-1] == "jpeg":
-                #img1= img1[window_y2:window_y2 + window_h2, window_x2:window_x2 + window_w2]
-                similar_group.append( os.path.normpath(folder_path + "\\" + image_files[i]))  # Initialize a group with the current image
-                ref_img = [image_files[i]]
-                correlation_values = []
-                #im = Image.open(os.path.join(folder_path, image_files[i]))
-                #im.show()
-                for j in range(i + 1, len(image_files)):
-                    if image_files[j].split(".")[-1]=="jpeg":
-                        sift = cv2.SIFT_create()
-                        img2 = cv2.imread(os.path.join(folder_path, image_files[j]), cv2.IMREAD_GRAYSCALE)
-                        # Detect keypoints and compute descriptors for reference and target images
-                        keypoints_ref, descriptors_ref = sift.detectAndCompute(img1, None)
-                        keypoints_target, descriptors_target = sift.detectAndCompute(img2, None)
-
-                        # Initialize the FLANN matcher
-                        FLANN_INDEX_KDTREE = 1
-                        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-                        search_params = dict(checks=50)
-                        flann = cv2.FlannBasedMatcher(index_params, search_params)
-
-                        # Match keypoints using FLANN matcher
-                        matches = flann.knnMatch(descriptors_ref, descriptors_target, k=2)
-
-                        # Apply ratio test to filter good matches
-                        good_matches = []
-                        for m, n in matches:
-                            if m.distance < 0.7 * n.distance:
-                                good_matches.append(m)
-                        num_matches = len(good_matches)
-                        num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
-                        match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
-                        keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(
-                            keypoints_ref) > 0 else 0.0
-                        already_in_group = False
-                        cuur_img = os.path.normpath(folder_path + "\\" + image_files[j])
-                        for group in groups:
-                            for img in group:
-                                if cuur_img == img:
-                                    already_in_group = True
-                                    break
-
-                        if not already_in_group:
-                            # Add similar image to the group
-                            if float(keypoints_matched_ratio) > 0.5:
-                                similar_group.append(os.path.normpath(folder_path + "\\" + image_files[j]))
-                                correlation_values.append(keypoints_matched_ratio)
-                            # Add similar image to the group
-
-            if len(similar_group) > 1:
-                # Add the group of similar images to the list
-                groups.append(similar_group[1:])
-                arr = np.array([similar_group[1:], correlation_values]).T
-                self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
-                # similar_images.append(similar_group)
-                similar_images_dict[similar_group[0]] = self.df
-        self.write_to_logview("finish searching")
-        self.progressBar.setValue(100 )
-        return similar_images_dict
 
     def show_group(self):
-        if self.Table_flag == 0 :
-            self.second_flag = 0
-            self.Table_flag+=1
-        else:
-            self.second_flag = 1
+        flag = 0
+
         img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
-        self.Add_items_to_table(img_list)
+        self.Add_items_to_table(img_list,flag)
         pixmap = QPixmap(self.similar_groups.currentText())
         geo = self.label_8.geometry().getRect()
         pixmap = pixmap.scaled(geo[-1], geo[-1])
@@ -616,7 +558,7 @@ class UI(Ui_MainWindow, QMainWindow):
     #select source folder and pre requsits
     def select_s(self):
         self.Source_listWidget.clear()
-        root = Tk()
+        root = tk.Tk()
         root.withdraw()
         self.Source_path=filedialog.askdirectory(title="select folder")
         self.Source_TextEdit.setPlainText(self.Source_path)
@@ -760,56 +702,64 @@ class UI(Ui_MainWindow, QMainWindow):
         return img1
 
     #write duplicates in table GUI
-    def Add_items_to_table(self, duplicate_paths):
+    def Add_items_to_table(self, duplicate_paths,flag):
         self.tableWidget.setRowCount(0)
         self.tableWidget.clear()
-        depth=1
-        for r in duplicate_paths:
-            if isinstance(r, list):
-                d=len(r)
-                if d > depth:
-                    depth = d
-            else:
-                self.sub_window.duplicates2 = []
-
-        l = len(duplicate_paths)
-        header=[]
-        for i in range(depth):
-            self.tableWidget.setColumnWidth(i, 450)
-            header.append("path " + str(i))
-        self.tableWidget.setHorizontalHeaderLabels(header)
-        if isinstance(duplicate_paths[0], list):
-            self.tableWidget.setRowCount(l+1)
-        for n, row_ in enumerate(duplicate_paths):
-            if isinstance(row_, list):
+        #self.sub_window.duplicates2 =[]
+        if flag == 1:
+            len_dup = [len(x) for x in duplicate_paths]
+            self.tableWidget.setRowCount(len(duplicate_paths))
+            self.tableWidget.setColumnCount(max(len_dup))
+            header=[]
+            for i in range(max(len_dup)):
+                self.tableWidget.setColumnWidth(i, 450)
+                header.append("path " + str(i))
+            self.tableWidget.setHorizontalHeaderLabels(header)
+            for n, row_ in enumerate(duplicate_paths):
                 for m, str_tmp in enumerate(row_):
-                    #self.tableWidget.insertRow(n)
                     str_tmp = QtWidgets.QTableWidgetItem(row_[m])
                     self.tableWidget.setItem(n,m,str_tmp)
-            else:
-                str_tmp = QtWidgets.QTableWidgetItem(row_)
-                self.tableWidget.insertRow(n)  # Add a row at index 0
+        else:
+            self.tableWidget.setRowCount(len(duplicate_paths))
+            self.tableWidget.setColumnCount(1)
+            self.tableWidget.setColumnWidth(0, 450)
+            for n, path in enumerate(duplicate_paths):
+                str_tmp = QtWidgets.QTableWidgetItem(path)
                 self.tableWidget.setItem(n,0,str_tmp)
-            self.sub_window.duplicates2.append(row_)
+                #self.sub_window.duplicates2.append(path)
         self.tableWidget.setSortingEnabled(1)
 
-    def find_duplicates(self):
+    def start_analysis(self):
+        self.similar_groups.clear()
+        self.label_8.clear()
+        self.tableWidget.clear()
+        root = tk.Tk()
+        root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
+        root.withdraw()
+
         self.Log_listwidget.clear()
         self.write_to_logview("start searching")
 
-        #image_hashes - containing real path
-        image_hashes = {}
-        #image_hashes - containing last folder name (class)
-        image_hashes2 = {}
+        if self.hist_analysis.isChecked():
+            self.image_hist_analysis(root_folder)
 
-        root = Tk()
-        root.withdraw()
-        root_folder = filedialog.askdirectory(title="select folder")
+        elif self.similar_analysis.isChecked():
+            self.candidates = self.find_similar_images(root_folder)
+            similar_groups = list(self.candidates.keys())
+            self.similar_groups.addItems(similar_groups)
+
+        else:
+            self.find_duplicate(root_folder)
+
+    def find_duplicate(self,root_folder):
+        flag = 1
+        # Create a dictionary to store image hashes and their corresponding file paths
+        image_hashes = {}
+        image_hashes2 = {}
+        self.sub_window.duplicates2 = []
         self.progressBar.setValue(0)
         len_dirs = 0
-        # Create a dictionary to store image hashes and their corresponding file paths
-        if not self.checkBox_2.isChecked() and not self.checkBox_3.isChecked():
-            # Walk through all files in the root folder and its subfolders
+        if not self.hist_analysis.isChecked():
             self.write_to_logview("Walk through all files in the root folder and its subfolders")
 
             obj = os.listdir(root_folder)
@@ -843,12 +793,10 @@ class UI(Ui_MainWindow, QMainWindow):
                         # If the hash already exists in the dictionary, it's a duplicate
                         if file_hash in image_hashes:
                             image_hashes[file_hash].append(file_path)
-                            t_str = file_path.split("\\")
-                            image_hashes2[file_hash].append(t_str[-2] + '\\' + t_str[-1] )
+                            image_hashes2[file_hash].append(file_path)
                         else:
                             image_hashes[file_hash] = [file_path]
-                            t_str = file_path.split("\\")
-                            image_hashes2[file_hash] = [t_str[-2] + '\\' + t_str[-1]]
+                            image_hashes2[file_hash] = [file_path]
 
                     if tmp_root != root:
                         offset = offset + factor
@@ -862,51 +810,118 @@ class UI(Ui_MainWindow, QMainWindow):
                     self.progressBar.setValue(precentage)
             self.progressBar.setValue(100)
             # Create a list of duplicate images
-            duplicates = []
-            self.sub_window.duplicates2 = []
+
             self.write_to_logview("Comparing duplicate images")
             for file_hash, file_paths in image_hashes2.items():
                 if len(file_paths) > 1:
-                    x=1
-                    duplicates.append(file_paths)
                     self.sub_window.duplicates2.append(image_hashes[file_hash])
-            self.Add_items_to_table(duplicates)
+            self.Add_items_to_table(self.sub_window.duplicates2,flag)
             self.write_to_logview("finish comparing")
 
-        elif self.checkBox_2.isChecked():
-            img_lst = []
-            med_lst = []
-            for root, dirs, files in os.walk(root_folder):
-                len_files = len(files)
-                if len_dirs == 0:
-                    len_dirs = len(dirs) + 1
-                indx = 1
-                for p, file in enumerate(files):
-                    # Get the file path
-                    file_path = os.path.join(root, file)
-                    if file_path.endswith(".jpeg"):
-                        img = cv2.imread(file_path, 0)
-                        array_vec = np.array(img)
-                        med_hist = int(np.median(array_vec))
-                        img_lst.append(file_path)
-                        med_lst.append(med_hist)
-                    self.progressBar.setValue(int((p / len_files) * 80))
+    def find_similar_images(self, folder_path):
+        self.Log_listwidget.clear()
+        self.write_to_logview("start searching")
+        image_files = os.listdir(folder_path)
+        similar_images_dict = {}
+        groups = []
+        window_x, window_y, window_w, window_h = (200, 200, 400, 400)
+        list_len = len(image_files)
+        for i in range(list_len):
+            self.write_to_logview("comparing image :" + str(i))
+            self.progressBar.setValue(int(100*i/list_len))
+            similar_group =[]
+            sift = cv2.SIFT_create()
+            img1 = cv2.imread(os.path.join(folder_path, image_files[i]), cv2.IMREAD_GRAYSCALE)
+            #img1_window = img1[window_y:window_y + window_h, window_x:window_x + window_w]
+            if image_files[i].split(".")[-1] == "jpeg":
+                #img1= img1[window_y2:window_y2 + window_h2, window_x2:window_x2 + window_w2]
+                similar_group.append( os.path.normpath(folder_path + "\\" + image_files[i]))  # Initialize a group with the current image
+                ref_img = [image_files[i]]
+                correlation_values = []
+                #im = Image.open(os.path.join(folder_path, image_files[i]))
+                #im.show()
+                for j in range(i + 1, len(image_files)):
+                    if image_files[j].split(".")[-1]=="jpeg":
+                        sift = cv2.SIFT_create()
+                        img2 = cv2.imread(os.path.join(folder_path, image_files[j]), cv2.IMREAD_GRAYSCALE)
+                        # Detect keypoints and compute descriptors for reference and target images
+                        keypoints_ref, descriptors_ref = sift.detectAndCompute(img1, None)
+                        keypoints_target, descriptors_target = sift.detectAndCompute(img2, None)
 
-            arr = np.array([med_lst,img_lst]).T
-            self.df = pd.DataFrame(arr, columns=['hist_med', 'img path'])
+                        # Initialize the FLANN matcher
+                        FLANN_INDEX_KDTREE = 1
+                        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+                        search_params = dict(checks=50)
+                        flann = cv2.FlannBasedMatcher(index_params, search_params)
 
-            sorted_arr =self.df.sort_values('hist_med')
-            self.val_list = sorted_arr['hist_med'].astype(int)
-            self.path_list = sorted_arr['img path']
+                        # Match keypoints using FLANN matcher
+                        matches = flann.knnMatch(descriptors_ref, descriptors_target, k=2)
 
-            max_v = max(self.val_list)
-            min_v = min(self.val_list)
-            self.Display_hist(self.val_list,min_v,max_v)
-        else:
-            self.candidates = self.find_similar_images(root_folder,0.99)
-            similar_groups = list(self.candidates.keys())
-            self.similar_groups.addItems(similar_groups)
+                        # Apply ratio test to filter good matches
+                        good_matches = []
+                        for m, n in matches:
+                            if m.distance < 0.7 * n.distance:
+                                good_matches.append(m)
+                        num_matches = len(good_matches)
+                        num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+                        match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+                        keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(
+                            keypoints_ref) > 0 else 0.0
+                        already_in_group = False
+                        cuur_img = os.path.normpath(folder_path + "\\" + image_files[j])
+                        for group in groups:
+                            for img in group:
+                                if cuur_img == img:
+                                    already_in_group = True
+                                    break
 
+                        if not already_in_group:
+                            # Add similar image to the group
+                            if float(keypoints_matched_ratio) > 0.5:
+                                similar_group.append(os.path.normpath(folder_path + "\\" + image_files[j]))
+                                correlation_values.append(keypoints_matched_ratio)
+                            # Add similar image to the group
+
+            if len(similar_group) > 1:
+                # Add the group of similar images to the list
+                groups.append(similar_group[1:])
+                arr = np.array([similar_group[1:], correlation_values]).T
+                self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
+                # similar_images.append(similar_group)
+                similar_images_dict[similar_group[0]] = self.df
+        self.write_to_logview("finish searching")
+        self.progressBar.setValue(100 )
+        return similar_images_dict
+
+    def image_hist_analysis(self,root_folder):
+        img_lst = []
+        med_lst = []
+        for root, dirs, files in os.walk(root_folder):
+            len_files = len(files)
+            if len_files == 0:
+                len_dirs = len(dirs) + 1
+            indx = 1
+            for p, file in enumerate(files):
+                # Get the file path
+                file_path = os.path.join(root, file)
+                if file_path.endswith(".jpeg"):
+                    img = cv2.imread(file_path, 0)
+                    array_vec = np.array(img)
+                    med_hist = int(np.median(array_vec))
+                    img_lst.append(file_path)
+                    med_lst.append(med_hist)
+                self.progressBar.setValue(int((p / len_files) * 80))
+
+        arr = np.array([med_lst, img_lst]).T
+        self.df = pd.DataFrame(arr, columns=['hist_med', 'img path'])
+
+        sorted_arr = self.df.sort_values('hist_med')
+        self.val_list = sorted_arr['hist_med'].astype(int)
+        self.path_list = sorted_arr['img path']
+
+        max_v = max(self.val_list)
+        min_v = min(self.val_list)
+        self.Display_hist(self.val_list, min_v, max_v)
 
     def Display_hist(self,arr,th_low,th_high):
         arr_max = max(arr)
@@ -968,11 +983,7 @@ class UI(Ui_MainWindow, QMainWindow):
             for j,item in enumerate(outlier_list):
                 self.tableWidget.setItem(j, 0, item)
             self.tableWidget.setColumnCount(1)
-            #self.sub_window.duplicates2.append(self.df.iloc[i, 1])
-        #self.Add_items_to_table(self.sub_window.duplicates2)
-        x=1
-        #indices = df.index[df['hist_med'] < self.horizontalSlider.value()]
-        #indices = self.val_list.index[self.val_list > self.horizontalSlider_2.value()]
+
 
     def list_filter_hist(self):
         x=1
@@ -981,10 +992,12 @@ class UI(Ui_MainWindow, QMainWindow):
         x=1
 
     def table_clicked(self):
-        self.sub_window.c = self.tableWidget.currentColumn()
+
         self.sub_window.r = self.tableWidget.currentRow()
+        self.sub_window.c = self.tableWidget.currentColumn()
         self.sub_window.show()
         self.sub_window.column_max = self.tableWidget.columnCount()
+
         if self.sub_window.c == 0:
             self.sub_window.Button_prev.hide()
             self.sub_window.Button_next.show()
@@ -994,15 +1007,12 @@ class UI(Ui_MainWindow, QMainWindow):
         else:
             self.sub_window.Button_prev.show()
             self.sub_window.Button_next.show()
-        if not self.checkBox_2.isChecked() and not self.checkBox_3.isChecked():
-            self.sub_window.update_image(os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
-        if self.checkBox_3.isChecked():
-            self.sub_window.update_image(os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
+        if not self.hist_analysis.isChecked() and not self.similar_analysis.isChecked():
+            self.sub_window.update_image(
+                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
         else:
             self.sub_window.update_image(
                 os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
-    def next_image(self):
-        x=1
 
 #Init app
 if __name__ == "__main__":
