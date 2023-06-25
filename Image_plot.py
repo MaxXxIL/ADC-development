@@ -9,7 +9,10 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+from PyQt5.QtWidgets import  QMainWindow,QTableWidgetItem
+import os
+from PyQt5.QtGui import QPixmap
+from tkinter import messagebox, filedialog
 
 class Ui_plot_image(object):
     def setupUi(self, plot_image):
@@ -65,6 +68,160 @@ class Ui_plot_image(object):
         self.Next_row_im.setText(_translate("plot_image", "Next row image"))
         self.Prev_row_im.setText(_translate("plot_image", "Prev row image"))
 
+class page(Ui_plot_image, QMainWindow):
+    def __init__(self,table):
+        super().__init__()
+        self.setupUi(self)
+        self.table = table
+        self.start_init()
+
+    def start_init(self):
+        self.Button_next.clicked.connect(self.Page_event)
+        self.Button_prev.clicked.connect(self.Page_event)
+        self.Button_del.clicked.connect(self.Page_event)
+        self.Next_row_im.clicked.connect(self.Page_event)
+        self.Prev_row_im.clicked.connect(self.Page_event)
+        self.hist = 0
+        self.r = None
+        self.c = None
+
+    def Page_event(self):
+        column_max = self.table.columnCount()
+        sender = self.Main_window.sender()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
+        if sender.objectName() == "Button_del":
+            self.delete_image()
+        elif sender.objectName() == "Button_next":
+            self.next_image()
+        elif sender.objectName() == "Button_prev":
+            self.prev_image()
+        elif sender.objectName() == "Prev_row_im":
+            self.Prev_row_image()
+        elif sender.objectName() == "Next_row_im":
+            self.Next_row_image()
+
+    def next_image(self):
+        try:
+            column_max = self.table.columnCount()
+            if self.r == None and self.c == None:
+                self.c = self.table.currentColumn()
+                self.r = self.table.currentRow()
+            if self.c  == column_max :
+               self.Button_prev.show()
+               self.Button_next.hide()
+            else:
+                if self.c + 1 >= column_max:
+                    self.Button_next.hide()
+                else:
+                    self.Button_next.show()
+                self.c = self.c + 1
+                self.Button_prev.show()
+
+            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+
+        except:
+            self.c = self.c - 1
+            messagebox.showinfo(title='Error massage', message='empty cell')
+
+    def prev_image(self):
+        r_c = self.table.columnCount()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
+
+        if self.c  == 0:
+            self.Button_prev.hide()
+            self.Button_next.show()
+        else:
+            if self.c - 1 == 0 :
+                self.Button_prev.hide()
+            else:
+                self.Button_prev.show()
+            self.c = self.c - 1
+            self.Button_next.show()
+        try:
+            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+
+        except:
+            messagebox.showinfo(title='Error massage', message='empty cell')
+
+    def delete_image(self):
+        try:
+            os.remove(self.curr_file)
+            table_len = self.table.columnCount()
+            cnt=0
+            self.table.setItem(self.r,self.c,QTableWidgetItem(''))
+            for i in range(table_len):
+                if self.table.item(self.r,i).text() != '':
+                    cnt += 1
+            if cnt < 2:
+                self.tableWidget.removeRow(self.r)
+
+
+            self.Next_row_image()
+        except:
+            messagebox.showinfo(title='Error massage', message='Image is not exist')
+
+    def update_image(self,path):
+        geo = self.label.geometry().getRect()
+        pixmap = QPixmap(path)
+        pixmap_resized = pixmap.scaled(geo[3], geo[3])
+        self.label_2.setText("Image path: " + path)
+        self.curr_file = path
+        self.label.setPixmap(pixmap_resized)
+        self.label.setScaledContents(True)
+        tmp = path.split("\\")
+        try:
+            self.label_3.setText("Class lable: " + tmp[-2])
+        except:
+            x=1
+        self.label_3.setStyleSheet("color : red")
+
+    def Next_row_image(self):
+        r_c = self.table.rowCount()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
+
+        if self.r != r_c:
+            self.r = self.r +1
+            try:
+                if not self.hist:
+                    l = len(os.path.normpath(self.duplicates2[self.r][self.c]))
+                    if l > 1:
+                        self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+                    else:
+                        self.update_image(os.path.normpath(self.duplicates2[self.r]))
+                else:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
+            except:
+                messagebox.showinfo(title='Error massage', message='empty cell')
+        else:
+            messagebox.showinfo(title='Error massage', message='end of the image list')
+
+    def Prev_row_image(self):
+        r_c = self.table.rowCount()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
+
+        if self.r != 0:
+            self.r = self.r - 1
+            try:
+                if not self.hist:
+                    l = len(os.path.normpath(self.duplicates2[self.r][self.c]))
+                    if l > 1:
+                        self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+                    else:
+                        self.update_image(os.path.normpath(self.duplicates2[self.r]))
+                else:
+                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
+            except:
+                messagebox.showinfo(title='Error massage', message='empty cell')
+        else:
+            messagebox.showinfo(title='Error massage', message='head of the image list')
 
 if __name__ == "__main__":
     import sys

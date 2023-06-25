@@ -11,210 +11,14 @@ import pandas as pd
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import QRectF
-from PyQt5.QtGui import QPixmap, QColor
-from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsScene, QGraphicsView, QTableWidgetItem, QMainWindow, QWidget, QMessageBox, QLabel
-
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from Image_utility_tool import Ui_MainWindow
-from Image_plot import Ui_plot_image
+from Image_plot import page
 from tkinter import messagebox, filedialog
 import tkinter as tk
 from PIL import Image, ImageDraw
-from PIL import Image
-
-class page(Ui_plot_image, QMainWindow):
-    def __init__(self,table):
-        super().__init__()
-        self.setupUi(self)
-        self.table = table
-        self.start_init()
-
-    def start_init(self):
-        self.Button_next.clicked.connect(self.Page_event)
-        self.Button_prev.clicked.connect(self.Page_event)
-        self.Button_del.clicked.connect(self.Page_event)
-        self.Next_row_im.clicked.connect(self.Page_event)
-        self.Prev_row_im.clicked.connect(self.Page_event)
-        self.hist = 0
-        self.r = None
-        self.c = None
-
-    def Page_event(self):
-        column_max = self.table.columnCount()
-        sender = app.sender()
-        if self.r == None and self.c == None:
-            self.c = self.table.currentColumn()
-            self.r = self.table.currentRow()
-        if sender.objectName() == "Button_del":
-            self.delete_image()
-        elif sender.objectName() == "Button_next":
-            self.next_image()
-        elif sender.objectName() == "Button_prev":
-            self.prev_image()
-        elif sender.objectName() == "Prev_row_im":
-            self.Prev_row_image()
-        elif sender.objectName() == "Next_row_im":
-            self.Next_row_image()
-
-    def next_image(self):
-        try:
-            column_max = self.table.columnCount()
-            if self.r == None and self.c == None:
-                self.c = self.table.currentColumn()
-                self.r = self.table.currentRow()
-            if self.c  == column_max :
-               self.Button_prev.show()
-               self.Button_next.hide()
-            else:
-                if self.c + 1 >= column_max:
-                    self.Button_next.hide()
-                else:
-                    self.Button_next.show()
-                self.c = self.c + 1
-                self.Button_prev.show()
-
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-
-        except:
-            self.c = self.c - 1
-            messagebox.showinfo(title='Error massage', message='empty cell')
-
-    def prev_image(self):
-        r_c = self.table.columnCount()
-        if self.r == None and self.c == None:
-            self.c = self.table.currentColumn()
-            self.r = self.table.currentRow()
-
-        if self.c  == 0:
-            self.Button_prev.hide()
-            self.Button_next.show()
-        else:
-            if self.c - 1 == 0 :
-                self.Button_prev.hide()
-            else:
-                self.Button_prev.show()
-            self.c = self.c - 1
-            self.Button_next.show()
-        try:
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-
-        except:
-            messagebox.showinfo(title='Error massage', message='empty cell')
-
-    def delete_image(self):
-        try:
-            os.remove(self.curr_file)
-            table_len = self.table.columnCount()
-            cnt=0
-            self.table.setItem(self.r,self.c,QTableWidgetItem(''))
-            for i in range(table_len):
-                if self.table.item(self.r,i).text() != '':
-                    cnt += 1
-            if cnt < 2:
-                self.tableWidget.removeRow(self.r)
-
-
-            self.Next_row_image()
-        except:
-            messagebox.showinfo(title='Error massage', message='Image is not exist')
-
-    def update_image(self,path):
-        geo = self.label.geometry().getRect()
-        pixmap = QPixmap(path)
-        pixmap_resized = pixmap.scaled(geo[3], geo[3])
-        self.label_2.setText("Image path: " + path)
-        self.curr_file = path
-        self.label.setPixmap(pixmap_resized)
-        self.label.setScaledContents(True)
-        tmp = path.split("\\")
-        try:
-            self.label_3.setText("Class lable: " + tmp[-2])
-        except:
-            x=1
-        self.label_3.setStyleSheet("color : red")
-
-    def Next_row_image(self):
-        r_c = self.table.rowCount()
-        if self.r == None and self.c == None:
-            self.c = self.table.currentColumn()
-            self.r = self.table.currentRow()
-
-        if self.r != r_c:
-            self.r = self.r +1
-            try:
-                if not self.hist:
-                    l = len(os.path.normpath(self.duplicates2[self.r][self.c]))
-                    if l > 1:
-                        self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-                    else:
-                        self.update_image(os.path.normpath(self.duplicates2[self.r]))
-                else:
-                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
-            except:
-                messagebox.showinfo(title='Error massage', message='empty cell')
-        else:
-            messagebox.showinfo(title='Error massage', message='end of the image list')
-
-    def Prev_row_image(self):
-        r_c = self.table.rowCount()
-        if self.r == None and self.c == None:
-            self.c = self.table.currentColumn()
-            self.r = self.table.currentRow()
-
-        if self.r != 0:
-            self.r = self.r - 1
-            try:
-                if not self.hist:
-                    l = len(os.path.normpath(self.duplicates2[self.r][self.c]))
-                    if l > 1:
-                        self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-                    else:
-                        self.update_image(os.path.normpath(self.duplicates2[self.r]))
-                else:
-                    self.update_image(os.path.normpath(self.duplicates2[self.r]))
-            except:
-                messagebox.showinfo(title='Error massage', message='empty cell')
-        else:
-            messagebox.showinfo(title='Error massage', message='head of the image list')
-
-class App(QWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.title = 'Converted Image'
-        self.left = 800
-        self.top = 500
-        self.width = 600
-        self.height = 600
-        #self.messagebox()
-
-    def messagebox(self, im):
-        img = Image.open(im)
-        w,h = img.size
-        d = ImageDraw.Draw(img)
-        d.ink = 1
-        d.rectangle([(w/2+100,h/2+100),(w/2-100,h/2-100)],outline="black",width = 10)
-        temp_image_path = os.path.normpath(os.getcwd() + "/temp.jpeg")
-        img.save(temp_image_path)
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-        label = QLabel(self)
-        pixmap = QPixmap(temp_image_path)
-        pixmap_resized = pixmap.scaled(600, 600)
-        label.setPixmap(pixmap_resized)
-        #self.resize(pixmap.width(), pixmap.height())
-        self.show()
-        Reply = QMessageBox.question(self, 'Converted Image', "Does the offset is correct?", QMessageBox.Yes | QMessageBox.No,QMessageBox.No)
-        if Reply == QMessageBox.Yes:
-            print('Yes clicked.')
-            x = True
-        else:
-            print('No clicked.')
-            x = False
-        self.close()
-        return x
 
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
@@ -222,7 +26,8 @@ class UI(Ui_MainWindow, QMainWindow):
         self.setupUi(self)
         self.init_button_actions()
         self.sub_window = page(self.tableWidget)
-        self.Image_view = App()
+        self.sub_window.Main_window = self
+
     # initialize all functions
     def init_button_actions(self):
         self.Table_flag = 0
@@ -239,7 +44,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.hist_lower.hide()
         self.horizontalSlider_2.hide()
         self.horizontalSlider.hide()
-        self.radioButton.clicked.connect(self.offset_set)
+        self.radioButton.clicked.connect(self.checkBox_set_offset)
         self.source_button.clicked.connect(self.select_s)
         self.destination_button.clicked.connect(self.select_d)
         self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
@@ -248,16 +53,18 @@ class UI(Ui_MainWindow, QMainWindow):
         self.tableWidget.clicked.connect(self.table_clicked)
         self.Extractor_next.clicked.connect(self.next_file_in_list)
         self.Extractor_prev.clicked.connect(self.prev_file_in_list)
-        self.hist_analysis.clicked.connect(self.histogram_view)
-        self.horizontalSlider.valueChanged.connect(self.lower_th_display)
-        self.horizontalSlider_2.valueChanged.connect(self.upper_th_display)
-        self.horizontalScrollBar.valueChanged.connect(self.scrollbar)
+        self.hist_analysis.clicked.connect(self.checkbox_histogram_view)
+        self.horizontalSlider.valueChanged.connect(self.Scrollbar_lower_th_display)
+        self.horizontalSlider_2.valueChanged.connect(self.Scrollbar_upper_th_display)
+        self.horizontalScrollBar.valueChanged.connect(self.Event_scrollbar)
         self.scale_list=np.linspace(0.1,1,num=50)
-        self.similar_analysis.clicked.connect(self.similar_images)
-        self.similar_groups.activated.connect(self.show_group)
+        self.similar_analysis.clicked.connect(self.checkbox_similar_images)
+        self.similar_groups.activated.connect(self.comboBox_group)
         self.similar_groups.hide()
 
-    def similar_images(self):
+#-----------------------------------------Define actions of objects-----------------------------------------------------
+    #show combobox objects
+    def checkbox_similar_images(self):
         if self.similar_analysis.isChecked():
             self.similar_groups.show()
             self.hist_analysis.setChecked(False)
@@ -276,7 +83,8 @@ class UI(Ui_MainWindow, QMainWindow):
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1100, 591))
             self.similar_groups.hide()
 
-    def histogram_view(self):
+    #show histogram objects
+    def checkbox_histogram_view(self):
         if self.hist_analysis.isChecked():
             self.sub_window.hist = 1
             self.horizontalSlider.show()
@@ -304,7 +112,58 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_lower.hide()
             self.horizontalSlider_2.hide()
 
-    #zoom in scroll
+    # show offset objects
+    def checkBox_set_offset(self):
+        if self.radioButton.isChecked():
+            self.offset_y.show()
+            self.offset_x.show()
+            self.x_offset_text.show()
+            self.y_offset_text.show()
+        else:
+            self.offset_y.hide()
+            self.offset_x.hide()
+            self.x_offset_text.hide()
+            self.y_offset_text.hide()
+
+
+#---------------------------------------------Handle events-------------------------------------------------------------
+##############--Generic Tab--##################
+
+    #select source folder
+    def select_s(self):
+        self.Source_listWidget.clear()
+        root = tk.Tk()
+        root.withdraw()
+        self.Source_path=filedialog.askdirectory(title="select folder")
+        self.Source_TextEdit.setPlainText(self.Source_path)
+        self.files_list = self.get_image_list_from_root(self.Source_path)
+        self.Source_listWidget.addItems(self.files_list)
+        temp_img = self.find_first_image(self.Source_path)
+        im = Image.open(temp_img)
+        if self.tabWidget.currentWidget().objectName() == 'crop_tab':
+            pixmap = QPixmap(temp_img)
+            self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
+            pixmap=pixmap.scaled(300,300)
+            self.label_image.resize(300, 300)
+            self.label_image.setPixmap(pixmap)
+        elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+            self.f_object = [self.files_list,0]
+            self.current_image_path = self.files_list[0]
+            self.image_changing(self.current_image_path)
+            pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+            geo = self.label_5.geometry().getRect()
+            pixmap = pixmap.scaled(geo[-1], geo[-1])
+            self.label_5.setPixmap(pixmap)
+
+    #select destination folder
+    def select_d(self):
+        path=filedialog.askdirectory(title="select folder")
+        self.destination_TextEdit.setPlainText(path)
+        self.destination_path=path
+        self.destination_listWidget.clear()
+
+##############--Image extractor Tab--##################
+    #scroll zoom in Image
     def wheelEvent(self, event):
         if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
             scrollDistance = event.angleDelta().y()
@@ -316,6 +175,16 @@ class UI(Ui_MainWindow, QMainWindow):
                 zoom_indx = numSteps.manhattanLength()
             s_indx = self.horizontalScrollBar.value()
             self.horizontalScrollBar.setValue(s_indx + zoom_indx)
+
+    def Event_scrollbar(self):
+                list = self.f_object[0]
+                file_indx = self.f_object[1]
+                self.current_image_path = list[file_indx]
+                self.image_changing(self.current_image_path)
+                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+                geo = self.label_5.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_5.setPixmap(pixmap)
 
     # mouse clicked on image
     def mousePressEvent(self, event):
@@ -332,37 +201,8 @@ class UI(Ui_MainWindow, QMainWindow):
                 img2.save(self.destination_path + '\\_' + img_name)
                 self.write_to_logview(img_name + ' image was saved')
                 self.next_file_in_list()
-
-    def center_and_crop_image(self,img_rect,cuur_path,event):
-        x = event.x() - img_rect[0] - 5
-        y = event.y() - img_rect[1] - 45
-        img_dim = Image.open(cuur_path).size
-        x_new = (img_dim[0] / img_rect[2]) * x
-        y_new = (img_dim[1] / img_rect[3]) * y
-        offset_y = int((img_dim[1] / 2) - y_new)
-        offset_x = int((img_dim[0] / 2) - x_new)
-        top = math.ceil((img_dim[0]))
-        left = math.ceil((img_dim[1]))
-        img = Image.open(cuur_path)
-        img1 = Image.new(img.mode, (img_dim[0] + abs(offset_x), img_dim[1] + abs(offset_y)))
-        img1.paste(img, (0 + offset_x, 0 + offset_y))
-        img2 = img1.crop((0, 0, img_dim[0], img_dim[1]))
-        return img2
-
-    #show offset fields
-    def offset_set(self):
-        if self.radioButton.isChecked():
-            self.offset_y.show()
-            self.offset_x.show()
-            self.x_offset_text.show()
-            self.y_offset_text.show()
-        else:
-            self.offset_y.hide()
-            self.offset_x.hide()
-            self.x_offset_text.hide()
-            self.y_offset_text.hide()
-
     #show next image in list
+
     def next_file_in_list(self):
 
         list = self.f_object[0]
@@ -382,10 +222,85 @@ class UI(Ui_MainWindow, QMainWindow):
         except:
             QMessageBox.about(self, "info massage", "no more images")
 
+    # show next image in list
+    def prev_file_in_list(self):
+        self.Extractor_next.show()
+        list = self.f_object[0]
+        file_indx = self.f_object[1] -1
+        self.current_image_path = list[file_indx]
+        self.f_object[1] = file_indx
+        l = len(list)
+        self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
+        if file_indx == 0:
+            self.Extractor_next.hide()
+        self.image_changing(self.current_image_path)
+        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+        geo = self.label_5.geometry().getRect()
+        pixmap = pixmap.scaled(geo[-1], geo[-1])
+        self.label_5.setPixmap(pixmap)
 
-    def show_group(self):
+    def table_clicked(self):
+
+        self.sub_window.r = self.tableWidget.currentRow()
+        self.sub_window.c = self.tableWidget.currentColumn()
+        self.sub_window.show()
+        self.sub_window.column_max = self.tableWidget.columnCount()
+
+        if self.sub_window.c == 0:
+            self.sub_window.Button_prev.hide()
+            self.sub_window.Button_next.show()
+        elif self.sub_window.c +1 ==self.sub_window.column_max:
+            self.sub_window.Button_next.hide()
+            self.sub_window.Button_prev.show()
+        else:
+            self.sub_window.Button_prev.show()
+            self.sub_window.Button_next.show()
+        if not self.hist_analysis.isChecked() and not self.similar_analysis.isChecked():
+            self.sub_window.update_image(
+                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
+        else:
+            self.sub_window.update_image(
+                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
+
+##############--Image finder Tab--##################
+    def start_analysis(self):
+        self.similar_groups.clear()
+        self.label_8.clear()
+        self.tableWidget.clear()
+        root = tk.Tk()
+        root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
+        root.withdraw()
+
+        self.Log_listwidget.clear()
+        self.write_to_logview("start searching")
+
+        if self.hist_analysis.isChecked():
+            self.image_hist_analysis(root_folder)
+
+        elif self.similar_analysis.isChecked():
+            self.candidates = self.find_similar_images(root_folder)
+            similar_groups = list(self.candidates.keys())
+            self.similar_groups.addItems(similar_groups)
+
+        else:
+            self.find_duplicate(root_folder)
+
+    def Scrollbar_lower_th_display(self):
+        outlier_list=[]
+        self.hist_value.setText("Value: " + str(self.horizontalSlider.value()))
+        self.plot_hist(self.horizontalSlider.value(),self.horizontalSlider_2.value())
+        self.find_hist_outliers()
+
+    def Scrollbar_upper_th_display(self):
+        outlier_list = []
+        self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
+        self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
+        self.find_hist_outliers()
+
+#------------------------------------------------GUI functions----------------------------------------------------------
+    #show image of choosen image and display on label
+    def comboBox_group(self):
         flag = 0
-
         img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
         self.Add_items_to_table(img_list,flag)
         pixmap = QPixmap(self.similar_groups.currentText())
@@ -393,6 +308,7 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_8.setPixmap(pixmap)
 
+    #change image in image_extractor view
     def image_changing(self,path):
         zoom = self.horizontalScrollBar.value()
         i = Image.open(path)
@@ -418,6 +334,7 @@ class UI(Ui_MainWindow, QMainWindow):
                        outline="black", width=8)
         i.save(os.getcwd() + '\\tmp.jpeg')
 
+    #padding image for future use
     def padding_image(self,path):
         # Define the padding values.
         image =  Image.open(path)
@@ -438,26 +355,98 @@ class UI(Ui_MainWindow, QMainWindow):
         padded_image.paste(image, box=(left, top))
         return padded_image
 
-    # show next image in list
-    def prev_file_in_list(self):
-        self.Extractor_next.show()
-        list = self.f_object[0]
-        file_indx = self.f_object[1] -1
-        self.current_image_path = list[file_indx]
-        self.f_object[1] = file_indx
-        l = len(list)
-        self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
-        if file_indx == 0:
-            self.Extractor_next.hide()
-        self.image_changing(self.current_image_path)
-        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-        geo = self.label_5.geometry().getRect()
-        pixmap = pixmap.scaled(geo[-1], geo[-1])
-        self.label_5.setPixmap(pixmap)
-
+    #write logs intu logview
     def write_to_logview(self, str1):
         self.Log_listwidget.addItem(str1)
         self.Log_listwidget.scrollToBottom()
+
+    #coping ADC files
+    def Copy_ADC_folder_files(self,root,recipe,local_path,destination_path):
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_flow.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_flow.csv'))
+
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_view.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_view.csv'))
+
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\ManReClassify.ini'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\ManReClassify.ini'))
+
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\run_details.json'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\run_details.json'))
+
+        shutil.copyfile(os.path.normpath(root + '\\ADC\\Surface2Bump.csv'), os.path.normpath(
+            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\Surface2Bump.csv'))
+
+    #Show images by th out of images GL histogram
+    def plot_hist(self,th_low,th_high):
+        counts, bins = np.histogram(self.val_list)
+        plt.clf()
+        plt.cla()
+        plt.hist(bins[:-1], bins, weights=counts)
+        plt.xlabel('Values')
+        plt.ylabel('Frequency')
+        plt.title('Histogram of AVG GL')
+        plt.axvline(x=th_low, color='r', linestyle='--')
+        plt.axvline(x=th_high, color='r', linestyle='--')
+        plt.savefig('histogram.png')
+        pixmap = QPixmap('histogram.png')
+        geo = self.label_7.geometry().getRect()
+        pixmap = pixmap.scaled(geo[-1], geo[-1])
+        self.label_7.setPixmap(pixmap)
+
+    #write duplicates in table GUI
+    def Add_items_to_table(self, duplicate_paths,flag):
+        self.tableWidget.setRowCount(0)
+        self.tableWidget.clear()
+        #self.sub_window.duplicates2 =[]
+        if flag == 1:
+            len_dup = [len(x) for x in duplicate_paths]
+            self.tableWidget.setRowCount(len(duplicate_paths))
+            self.tableWidget.setColumnCount(max(len_dup))
+            header=[]
+            for i in range(max(len_dup)):
+                self.tableWidget.setColumnWidth(i, 450)
+                header.append("path " + str(i))
+            self.tableWidget.setHorizontalHeaderLabels(header)
+            for n, row_ in enumerate(duplicate_paths):
+                for m, str_tmp in enumerate(row_):
+                    str_tmp = QtWidgets.QTableWidgetItem(row_[m])
+                    self.tableWidget.setItem(n,m,str_tmp)
+        else:
+            self.tableWidget.setRowCount(len(duplicate_paths))
+            self.tableWidget.setColumnCount(1)
+            self.tableWidget.setColumnWidth(0, 450)
+            for n, path in enumerate(duplicate_paths):
+                str_tmp = QtWidgets.QTableWidgetItem(path)
+                self.tableWidget.setItem(n,0,str_tmp)
+                #self.sub_window.duplicates2.append(path)
+        self.tableWidget.setSortingEnabled(1)
+
+    # display histogram on label
+    def Display_hist(self,arr,th_low,th_high):
+        arr_max = max(arr)
+        arr_min = min(arr)
+        self.horizontalSlider_2.setMaximum(arr_max)
+        self.horizontalSlider_2.setMinimum(arr_min)
+        self.horizontalSlider_2.setValue(arr_max)
+        self.hist_min.setText("Min: " + str(arr_min))
+        self.hist_max.setText("Max: " + str(arr_max))
+        self.horizontalSlider.setMaximum(arr_max)
+        self.horizontalSlider.setMinimum(arr_min)
+        self.horizontalSlider.setValue(arr_min)
+        self.plot_hist(th_low,th_high)
+
+
+#-----------------------calculation and analysis-------------------------
+
+    #find first image in root folders
+    def find_first_image(self, root_path):
+        for root, dirs, files in os.walk(root_path):
+            for file in files:
+                arr = file.split(".")
+                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
+                    img_path = os.path.normpath(root + "/" + file )
+                    return img_path
 
     #seperate images into subfolders
     def seperate_images(self):
@@ -526,76 +515,42 @@ class UI(Ui_MainWindow, QMainWindow):
             except:
                 QMessageBox.about(self, "Error msg", "please selects output folder")
 
-    def Copy_ADC_folder_files(self,root,recipe,local_path,destination_path):
-        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_flow.csv'), os.path.normpath(
-            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_flow.csv'))
+    #find outliers by th
+    def find_hist_outliers(self):
+        df = pd.DataFrame(self.val_list, columns=['hist_med'])
+        indices1 = list(df.index[df['hist_med'] < self.horizontalSlider.value()].values)
+        indices2 = list(df.index[df['hist_med'] > self.horizontalSlider_2.value()].values)
+        indices = indices1 + indices2
+        outlier_list=[]
+        self.sub_window.duplicates2 = []
+        self.tableWidget.setColumnCount(1)
+        self.tableWidget.setColumnWidth(0, 450)
+        for i in range(len(indices)):
+            img_path = self.df.iloc[int(indices[i]), 1]
+            str_tmp = QtWidgets.QTableWidgetItem(self.df.iloc[int(indices[i]), 1])
+            self.sub_window.duplicates2.append(img_path)
+            outlier_list.append(str_tmp)
+        self.tableWidget.setRowCount(len(outlier_list))
+        if outlier_list:
+            for j,item in enumerate(outlier_list):
+                self.tableWidget.setItem(j, 0, item)
+            self.tableWidget.setColumnCount(1)
 
-        shutil.copyfile(os.path.normpath(root + '\\ADC\\image_view.csv'), os.path.normpath(
-            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\image_view.csv'))
-
-        shutil.copyfile(os.path.normpath(root + '\\ADC\\ManReClassify.ini'), os.path.normpath(
-            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\ManReClassify.ini'))
-
-        shutil.copyfile(os.path.normpath(root + '\\ADC\\run_details.json'), os.path.normpath(
-            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\run_details.json'))
-
-        shutil.copyfile(os.path.normpath(root + '\\ADC\\Surface2Bump.csv'), os.path.normpath(
-            destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\Surface2Bump.csv'))
-
-    def scrollbar(self):
-            try:
-                list = self.f_object[0]
-                file_indx = self.f_object[1]
-                self.current_image_path = list[file_indx]
-                self.image_changing(self.current_image_path)
-                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                geo = self.label_5.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_5.setPixmap(pixmap)
-            except:
-                x=1
-
-    #select source folder and pre requsits
-    def select_s(self):
-        self.Source_listWidget.clear()
-        root = tk.Tk()
-        root.withdraw()
-        self.Source_path=filedialog.askdirectory(title="select folder")
-        self.Source_TextEdit.setPlainText(self.Source_path)
-        self.files_list = self.get_image_list_from_root(self.Source_path)
-        self.Source_listWidget.addItems(self.files_list)
-        temp_img = self.find_first_image(self.Source_path)
-        im = Image.open(temp_img)
-        if self.tabWidget.currentWidget().objectName() == 'crop_tab':
-            pixmap = QPixmap(temp_img)
-            self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
-            pixmap=pixmap.scaled(300,300)
-            self.label_image.resize(300, 300)
-            self.label_image.setPixmap(pixmap)
-        elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            self.f_object = [self.files_list,0]
-            self.current_image_path = self.files_list[0]
-            self.image_changing(self.current_image_path)
-            pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-            geo = self.label_5.geometry().getRect()
-            pixmap = pixmap.scaled(geo[-1], geo[-1])
-            self.label_5.setPixmap(pixmap)
-
-    #select destination folder
-    def select_d(self):
-        path=filedialog.askdirectory(title="select folder")
-        self.destination_TextEdit.setPlainText(path)
-        self.destination_path=path
-        self.destination_listWidget.clear()
-
-    #find first image in root folders
-    def find_first_image(self, root_path):
-        for root, dirs, files in os.walk(root_path):
-            for file in files:
-                arr = file.split(".")
-                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
-                    img_path = os.path.normpath(root + "/" + file )
-                    return img_path
+    def center_and_crop_image(self,img_rect,cuur_path,event):
+        x = event.x() - img_rect[0] - 5
+        y = event.y() - img_rect[1] - 45
+        img_dim = Image.open(cuur_path).size
+        x_new = (img_dim[0] / img_rect[2]) * x
+        y_new = (img_dim[1] / img_rect[3]) * y
+        offset_y = int((img_dim[1] / 2) - y_new)
+        offset_x = int((img_dim[0] / 2) - x_new)
+        top = math.ceil((img_dim[0]))
+        left = math.ceil((img_dim[1]))
+        img = Image.open(cuur_path)
+        img1 = Image.new(img.mode, (img_dim[0] + abs(offset_x), img_dim[1] + abs(offset_y)))
+        img1.paste(img, (0 + offset_x, 0 + offset_y))
+        img2 = img1.crop((0, 0, img_dim[0], img_dim[1]))
+        return img2
 
     def get_image_list_from_root(self, root_path):
         files_list=[]
@@ -701,56 +656,7 @@ class UI(Ui_MainWindow, QMainWindow):
         img1.paste(img, (left - x_offset, top - x_offset))
         return img1
 
-    #write duplicates in table GUI
-    def Add_items_to_table(self, duplicate_paths,flag):
-        self.tableWidget.setRowCount(0)
-        self.tableWidget.clear()
-        #self.sub_window.duplicates2 =[]
-        if flag == 1:
-            len_dup = [len(x) for x in duplicate_paths]
-            self.tableWidget.setRowCount(len(duplicate_paths))
-            self.tableWidget.setColumnCount(max(len_dup))
-            header=[]
-            for i in range(max(len_dup)):
-                self.tableWidget.setColumnWidth(i, 450)
-                header.append("path " + str(i))
-            self.tableWidget.setHorizontalHeaderLabels(header)
-            for n, row_ in enumerate(duplicate_paths):
-                for m, str_tmp in enumerate(row_):
-                    str_tmp = QtWidgets.QTableWidgetItem(row_[m])
-                    self.tableWidget.setItem(n,m,str_tmp)
-        else:
-            self.tableWidget.setRowCount(len(duplicate_paths))
-            self.tableWidget.setColumnCount(1)
-            self.tableWidget.setColumnWidth(0, 450)
-            for n, path in enumerate(duplicate_paths):
-                str_tmp = QtWidgets.QTableWidgetItem(path)
-                self.tableWidget.setItem(n,0,str_tmp)
-                #self.sub_window.duplicates2.append(path)
-        self.tableWidget.setSortingEnabled(1)
-
-    def start_analysis(self):
-        self.similar_groups.clear()
-        self.label_8.clear()
-        self.tableWidget.clear()
-        root = tk.Tk()
-        root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
-        root.withdraw()
-
-        self.Log_listwidget.clear()
-        self.write_to_logview("start searching")
-
-        if self.hist_analysis.isChecked():
-            self.image_hist_analysis(root_folder)
-
-        elif self.similar_analysis.isChecked():
-            self.candidates = self.find_similar_images(root_folder)
-            similar_groups = list(self.candidates.keys())
-            self.similar_groups.addItems(similar_groups)
-
-        else:
-            self.find_duplicate(root_folder)
-
+    # find identical images
     def find_duplicate(self,root_folder):
         flag = 1
         # Create a dictionary to store image hashes and their corresponding file paths
@@ -818,6 +724,7 @@ class UI(Ui_MainWindow, QMainWindow):
             self.Add_items_to_table(self.sub_window.duplicates2,flag)
             self.write_to_logview("finish comparing")
 
+    #find images with same features
     def find_similar_images(self, folder_path):
         self.Log_listwidget.clear()
         self.write_to_logview("start searching")
@@ -893,6 +800,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.progressBar.setValue(100 )
         return similar_images_dict
 
+    # calculate hist of images
     def image_hist_analysis(self,root_folder):
         img_lst = []
         med_lst = []
@@ -923,96 +831,6 @@ class UI(Ui_MainWindow, QMainWindow):
         min_v = min(self.val_list)
         self.Display_hist(self.val_list, min_v, max_v)
 
-    def Display_hist(self,arr,th_low,th_high):
-        arr_max = max(arr)
-        arr_min = min(arr)
-        self.horizontalSlider_2.setMaximum(arr_max)
-        self.horizontalSlider_2.setMinimum(arr_min)
-        self.horizontalSlider_2.setValue(arr_max)
-        self.hist_min.setText("Min: " + str(arr_min))
-        self.hist_max.setText("Max: " + str(arr_max))
-        self.horizontalSlider.setMaximum(arr_max)
-        self.horizontalSlider.setMinimum(arr_min)
-        self.horizontalSlider.setValue(arr_min)
-        self.plot_hist(th_low,th_high)
-
-    def plot_hist(self,th_low,th_high):
-        counts, bins = np.histogram(self.val_list)
-        plt.clf()
-        plt.cla()
-        plt.hist(bins[:-1], bins, weights=counts)
-        plt.xlabel('Values')
-        plt.ylabel('Frequency')
-        plt.title('Histogram of AVG GL')
-        plt.axvline(x=th_low, color='r', linestyle='--')
-        plt.axvline(x=th_high, color='r', linestyle='--')
-        plt.savefig('histogram.png')
-        pixmap = QPixmap('histogram.png')
-        geo = self.label_7.geometry().getRect()
-        pixmap = pixmap.scaled(geo[-1], geo[-1])
-        self.label_7.setPixmap(pixmap)
-
-    def lower_th_display(self):
-        outlier_list=[]
-        self.hist_value.setText("Value: " + str(self.horizontalSlider.value()))
-        self.plot_hist(self.horizontalSlider.value(),self.horizontalSlider_2.value())
-        self.find_outliers()
-
-    def upper_th_display(self):
-        outlier_list = []
-        self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
-        self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
-        self.find_outliers()
-
-    def find_outliers(self):
-        df = pd.DataFrame(self.val_list, columns=['hist_med'])
-        indices1 = list(df.index[df['hist_med'] < self.horizontalSlider.value()].values)
-        indices2 = list(df.index[df['hist_med'] > self.horizontalSlider_2.value()].values)
-        indices = indices1 + indices2
-        outlier_list=[]
-        self.sub_window.duplicates2 = []
-        self.tableWidget.setColumnCount(1)
-        self.tableWidget.setColumnWidth(0, 450)
-        for i in range(len(indices)):
-            img_path = self.df.iloc[int(indices[i]), 1]
-            str_tmp = QtWidgets.QTableWidgetItem(self.df.iloc[int(indices[i]), 1])
-            self.sub_window.duplicates2.append(img_path)
-            outlier_list.append(str_tmp)
-        self.tableWidget.setRowCount(len(outlier_list))
-        if outlier_list:
-            for j,item in enumerate(outlier_list):
-                self.tableWidget.setItem(j, 0, item)
-            self.tableWidget.setColumnCount(1)
-
-
-    def list_filter_hist(self):
-        x=1
-
-    def derive_hist_imges(self):
-        x=1
-
-    def table_clicked(self):
-
-        self.sub_window.r = self.tableWidget.currentRow()
-        self.sub_window.c = self.tableWidget.currentColumn()
-        self.sub_window.show()
-        self.sub_window.column_max = self.tableWidget.columnCount()
-
-        if self.sub_window.c == 0:
-            self.sub_window.Button_prev.hide()
-            self.sub_window.Button_next.show()
-        elif self.sub_window.c +1 ==self.sub_window.column_max:
-            self.sub_window.Button_next.hide()
-            self.sub_window.Button_prev.show()
-        else:
-            self.sub_window.Button_prev.show()
-            self.sub_window.Button_next.show()
-        if not self.hist_analysis.isChecked() and not self.similar_analysis.isChecked():
-            self.sub_window.update_image(
-                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r][self.sub_window.c]))
-        else:
-            self.sub_window.update_image(
-                os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
 
 #Init app
 if __name__ == "__main__":
