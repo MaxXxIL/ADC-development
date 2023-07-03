@@ -84,6 +84,7 @@ class page(Ui_plot_image, QMainWindow):
         self.hist = 0
         self.r = None
         self.c = None
+        self.similar_analysis = 0
 
     def Page_event(self):
         column_max = self.table.columnCount()
@@ -108,22 +109,24 @@ class page(Ui_plot_image, QMainWindow):
             if self.r == None and self.c == None:
                 self.c = self.table.currentColumn()
                 self.r = self.table.currentRow()
-            if self.c  == column_max :
+            if self.c + 1  == column_max :
                self.Button_prev.show()
                self.Button_next.hide()
             else:
-                if self.c + 1 >= column_max:
+                if self.c + 2 >= column_max:
                     self.Button_next.hide()
                 else:
                     self.Button_next.show()
                 self.c = self.c + 1
                 self.Button_prev.show()
-
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-
+            if self.similar_analysis == 0:
+                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            else:
+                self.update_image(os.path.normpath(self.duplicates2[self.r]))
         except:
             self.c = self.c - 1
             messagebox.showinfo(title='Error massage', message='empty cell')
+        #self.show_hide_buttons(flag)
 
     def prev_image(self):
         r_c = self.table.columnCount()
@@ -142,8 +145,10 @@ class page(Ui_plot_image, QMainWindow):
             self.c = self.c - 1
             self.Button_next.show()
         try:
-            self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
-
+            if self.similar_analysis == 0:
+                self.update_image(os.path.normpath(self.duplicates2[self.r][self.c]))
+            else:
+                self.update_image(os.path.normpath(self.duplicates2[self.r]))
         except:
             messagebox.showinfo(title='Error massage', message='empty cell')
 
@@ -153,11 +158,11 @@ class page(Ui_plot_image, QMainWindow):
             table_len = self.table.columnCount()
             cnt=0
             self.table.setItem(self.r,self.c,QTableWidgetItem(''))
-            for i in range(table_len):
-                if self.table.item(self.r,i).text() != '':
-                    cnt += 1
-            if cnt < 2:
-                self.tableWidget.removeRow(self.r)
+            #for i in range(table_len):
+                #if self.table.item(self.r,i).text() != '':
+                    #cnt += 1
+            #if cnt < 2:
+                #self.tableWidget.removeRow(self.r)
 
 
             self.Next_row_image()
@@ -173,11 +178,9 @@ class page(Ui_plot_image, QMainWindow):
         self.label.setPixmap(pixmap_resized)
         self.label.setScaledContents(True)
         tmp = path.split("\\")
-        try:
-            self.label_3.setText("Class lable: " + tmp[-2])
-        except:
-            x=1
+        self.label_3.setText("Class lable: " + tmp[-2])
         self.label_3.setStyleSheet("color : red")
+
 
     def Next_row_image(self):
         r_c = self.table.rowCount()
@@ -201,6 +204,7 @@ class page(Ui_plot_image, QMainWindow):
         else:
             messagebox.showinfo(title='Error massage', message='end of the image list')
 
+
     def Prev_row_image(self):
         r_c = self.table.rowCount()
         if self.r == None and self.c == None:
@@ -223,6 +227,12 @@ class page(Ui_plot_image, QMainWindow):
         else:
             messagebox.showinfo(title='Error massage', message='head of the image list')
 
+    def show_hide_buttons(self):
+        button = self.Main_window.sender().objectName()
+        r_c = self.table.rowCount()
+        if self.r == None and self.c == None:
+            self.c = self.table.currentColumn()
+            self.r = self.table.currentRow()
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)

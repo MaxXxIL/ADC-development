@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="crop_tab">
      <attribute name="title">
@@ -290,10 +290,10 @@
        <number>1</number>
       </property>
       <property name="maximum">
-       <number>50</number>
+       <number>15</number>
       </property>
       <property name="value">
-       <number>50</number>
+       <number>15</number>
       </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
@@ -304,7 +304,7 @@
        <rect>
         <x>246</x>
         <y>620</y>
-        <width>291</width>
+        <width>321</width>
         <height>20</height>
        </rect>
       </property>
