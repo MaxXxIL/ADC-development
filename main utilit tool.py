@@ -1,4 +1,5 @@
 # This is a sample Python script.
+import pdb
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
@@ -9,30 +10,97 @@ import shutil
 import os
 import hashlib
 import pandas as pd
-
+import threading
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot, QMetaObject
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot, QMetaObject, pyqtSignal
 from Image_utility_tool import Ui_MainWindow
 from Image_plot import page
 from tkinter import messagebox, filedialog
 import tkinter as tk
 from PIL import Image, ImageDraw
 
+class SIFT_Worker(QThread):
+    comparison_done = pyqtSignal(str)  # Signal to indicate the comparison is done
+    scriprt_done = pyqtSignal(dict)
 
-class Worker(QObject):
-    updateListView = pyqtSignal(list)
+    def __init__(self, folder_path):
+        super(SIFT_Worker, self).__init__()
+        self.folder_path = folder_path
+        self.results = []
 
-    @pyqtSlot()
-    def performFunction(self):
-        # Simulating time-consuming task
-        data = ["Item 1", "Item 2", "Item 3"]
+    def run(self):
 
-        # Emit the signal to update the QListView
-        self.updateListView.emit(data)
+        image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.jpeg', '.jpg'))]
+        similar_images_dict = {}
+        groups = []
+        resize_window = (400, 400, 400, 400)
+        l =len(image_files)
+        sift = cv2.SIFT_create()
+
+        for i, image_file in enumerate(image_files):
+            #self.write_to_logview(f"comparing image: {i}")
+            #self.progressBar.setValue(int(100 * i / list_len))
+            similar_group = []
+            img1 = Image.open(os.path.join(self.folder_path, image_file))
+            img_size = img1.size
+            resize_window = (int(max(img_size) / 2), int(max(img_size) / 2))
+            im1_new = img1.crop((img_size[0] / 2 - img_size[0] / 4, img_size[1] / 2 - img_size[1] / 4,
+                                 img_size[0] / 2 + img_size[0] / 4, img_size[1] / 2 + img_size[1] / 4))
+            img1 = np.asarray(im1_new)
+
+            similar_group.append(
+                os.path.normpath(os.path.join(self.folder_path, image_file)))  # Initialize a group with the current image
+            correlation_values = []
+
+            for j in range(i + 1, len(image_files)):
+                image_file_j = image_files[j]
+                img2 = Image.open(os.path.join(self.folder_path, image_file_j))
+                img_size = img2.size
+                im2_new = img2.crop((img_size[0] / 2 - img_size[0] / 4, img_size[1] / 2 - img_size[1] / 4,
+                                     img_size[0] / 2 + img_size[0] / 4, img_size[1] / 2 + img_size[1] / 4))
+                img2 = np.asarray(im2_new)
+
+                # Detect keypoints and compute descriptors for reference and target images
+                keypoints_ref, descriptors_ref = sift.detectAndCompute(img1, None)
+                keypoints_target, descriptors_target = sift.detectAndCompute(img2, None)
+
+                # Initialize the FLANN matcher
+                FLANN_INDEX_KDTREE = 1
+                index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+                search_params = dict(checks=50)
+                flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+                # Match keypoints using FLANN matcher
+                matches = flann.knnMatch(descriptors_ref, descriptors_target, k=2)
+
+                # Apply ratio test to filter good matches
+                good_matches = [m for m, n in matches if m.distance < 0.7 * n.distance]
+                num_matches = len(good_matches)
+                num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+                match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+                keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
+                already_in_group = any(
+                    os.path.normpath(os.path.join(self.folder_path, image_file_j)) in group for group in groups)
+
+                if not already_in_group:
+                    # Add similar image to the group
+                    if keypoints_matched_ratio > 0.5:
+                        similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_file_j)))
+                        correlation_values.append(keypoints_matched_ratio)
+
+            if len(similar_group) > 1:
+                # Add the group of similar images to the list
+                groups.append(similar_group[1:])
+                arr = np.array([similar_group[1:], correlation_values]).T
+                self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
+                similar_images_dict[similar_group[0]] = self.df
+
+            self.comparison_done.emit('comparing file:' + str(i) + "\\" + str(l) )
+        self.scriprt_done.emit(similar_images_dict)
 
 
 class UI(Ui_MainWindow, QMainWindow):
@@ -144,10 +212,8 @@ class UI(Ui_MainWindow, QMainWindow):
             self.x_offset_text.hide()
             self.y_offset_text.hide()
 
-
 #---------------------------------------------Handle events-------------------------------------------------------------
 ##############--Generic Tab--##################
-
     def select_folder(self):
         root = tk.Tk()
         root.withdraw()
@@ -179,7 +245,6 @@ class UI(Ui_MainWindow, QMainWindow):
             self.destination_TextEdit.setPlainText(folder_path)
             self.destination_path = folder_path
             self.destination_listWidget.clear()
-
 
 ##############--Image extractor Tab--##################
     #scroll zoom in Image
@@ -324,9 +389,9 @@ class UI(Ui_MainWindow, QMainWindow):
             self.image_hist_analysis(root_folder)
 
         elif self.similar_analysis.isChecked():
-            self.candidates = self.find_similar_images(root_folder)
-            similar_groups = list(self.candidates.keys())
-            self.similar_groups.addItems(similar_groups)
+            self.find_similar(root_folder)
+            #similar_groups = list(self.candidates.keys())
+            #self.similar_groups.addItems(similar_groups)
 
         else:
             self.find_duplicate(root_folder)
@@ -484,6 +549,23 @@ class UI(Ui_MainWindow, QMainWindow):
         self.write_to_logview("finish searching")
         self.progressBar.setValue(100 )
         return similar_images_dict
+
+    def find_similar(self,folder_path):
+
+        # Start a new worker thread for image comparison
+        worker = SIFT_Worker(folder_path)
+        worker.comparison_done.connect(self.update_list_items)
+        worker.scriprt_done.connect(self.update_similar_group)
+        worker.start()
+    def update_similar_group(self,similar_dict):
+        similar_groups = list(similar_dict.keys())
+        self.candidates = similar_dict
+        self.similar_groups.addItems(similar_groups)
+    def update_list_items(self, results):
+        # Update the ListView with the list of results
+
+        self.write_to_logview(results)
+
 
     # calculate hist of images
     def image_hist_analysis(self,root_folder):
@@ -678,7 +760,6 @@ class UI(Ui_MainWindow, QMainWindow):
         img1 = Image.new(img.mode, (w + x_offset, h + y_offset))
         img1.paste(img, (left - x_offset, top - x_offset))
         return img1
-
 
     #coping ADC files
     def Copy_ADC_folder_files(self,root,recipe,local_path,destination_path):
