@@ -1,8 +1,6 @@
-# This is a sample Python script.
-import pdb
-
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+
 import cv2
 import math
 import sys
@@ -10,103 +8,145 @@ import shutil
 import os
 import hashlib
 import pandas as pd
-import threading
+import pyqtgraph as pg
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
+from PyQt5.QtGui import QPixmap, QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QListWidgetItem ,QVBoxLayout
 from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot, QMetaObject, pyqtSignal
 from Image_utility_tool import Ui_MainWindow
 from Image_plot import page
 from tkinter import messagebox, filedialog
 import tkinter as tk
 from PIL import Image, ImageDraw
-
+import time
 class SIFT_Worker(QThread):
-    comparison_done = pyqtSignal(str)  # Signal to indicate the comparison is done
-    scriprt_done = pyqtSignal(dict)
+    comparison_done = pyqtSignal(QListWidgetItem)  # Signal to indicate the comparison is done
+    found_similar_group = pyqtSignal(dict)
 
-    def __init__(self, folder_path):
+    def __init__(self, folder_path,th):
         super(SIFT_Worker, self).__init__()
         self.folder_path = folder_path
+        self.th = th
         self.results = []
 
     def run(self):
-
-        image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.jpeg', '.jpg'))]
-        similar_images_dict = {}
         groups = []
-        resize_window = (400, 400, 400, 400)
-        l =len(image_files)
-        sift = cv2.SIFT_create()
+        similar_images_dict = {}
+        #loading images from path to dict
+        image_dict = self.load_images_to_dict(self.folder_path)
+        self.Print_log_item(" ".join(["start comparing : ", str(len(image_dict)), " files"]), "black")
 
-        for i, image_file in enumerate(image_files):
-            #self.write_to_logview(f"comparing image: {i}")
-            #self.progressBar.setValue(int(100 * i / list_len))
+        while len(image_dict) > 1:
             similar_group = []
-            img1 = Image.open(os.path.join(self.folder_path, image_file))
-            img_size = img1.size
-            resize_window = (int(max(img_size) / 2), int(max(img_size) / 2))
-            im1_new = img1.crop((img_size[0] / 2 - img_size[0] / 4, img_size[1] / 2 - img_size[1] / 4,
-                                 img_size[0] / 2 + img_size[0] / 4, img_size[1] / 2 + img_size[1] / 4))
-            img1 = np.asarray(im1_new)
+            #importing images and path from dict
+            path_list = list(image_dict.keys())
+            image_list = list(image_dict.values())
 
-            similar_group.append(
-                os.path.normpath(os.path.join(self.folder_path, image_file)))  # Initialize a group with the current image
-            correlation_values = []
+            #using first image for compare
+            img1 = image_list[0]
+            img_name = path_list[0]
+            del image_dict[path_list[0]]
 
-            for j in range(i + 1, len(image_files)):
-                image_file_j = image_files[j]
-                img2 = Image.open(os.path.join(self.folder_path, image_file_j))
-                img_size = img2.size
-                im2_new = img2.crop((img_size[0] / 2 - img_size[0] / 4, img_size[1] / 2 - img_size[1] / 4,
-                                     img_size[0] / 2 + img_size[0] / 4, img_size[1] / 2 + img_size[1] / 4))
-                img2 = np.asarray(im2_new)
+            #finding similar group
+            similar_group = self.SIFT_Akaze_algo(img1, image_dict, groups, similar_group)
+            similar_images_len = len(similar_group[0])
 
-                # Detect keypoints and compute descriptors for reference and target images
-                keypoints_ref, descriptors_ref = sift.detectAndCompute(img1, None)
-                keypoints_target, descriptors_target = sift.detectAndCompute(img2, None)
+            if similar_images_len > 0:
+                # Add the group of similar images dict and geoups
+                similar_images_dict , groups = self.append_group(groups,similar_group,img_name,similar_images_dict)
 
-                # Initialize the FLANN matcher
-                FLANN_INDEX_KDTREE = 1
-                index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-                search_params = dict(checks=50)
-                flann = cv2.FlannBasedMatcher(index_params, search_params)
+                #earsing the images that found to be similar
+                for key in similar_group[0][:]:
+                    del image_dict[key]
+                file_name = path_list[0].split('\\')
+                self.Print_log_item(" ".join(["Found: ", str(similar_images_len), " images that are similar to file", file_name[-1]]),"blue")
 
-                # Match keypoints using FLANN matcher
-                matches = flann.knnMatch(descriptors_ref, descriptors_target, k=2)
+                #emit similar group to gui
+                self.found_similar_group.emit(similar_images_dict)
+            self.Print_log_item(" ".join(["there is : ", str(len(image_dict)), " images left"]) ,"black")
 
-                # Apply ratio test to filter good matches
-                good_matches = [m for m, n in matches if m.distance < 0.7 * n.distance]
-                num_matches = len(good_matches)
-                num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
-                match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
-                keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
-                already_in_group = any(
-                    os.path.normpath(os.path.join(self.folder_path, image_file_j)) in group for group in groups)
+        self.Print_log_item(" ".join(["Comparison done, found: ", str(len(similar_images_dict)), " groups of similar images"]), "green")
+        self.found_similar_group.emit(similar_images_dict)
 
-                if not already_in_group:
-                    # Add similar image to the group
-                    if keypoints_matched_ratio > 0.5:
-                        similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_file_j)))
-                        correlation_values.append(keypoints_matched_ratio)
+    def load_images_to_dict(self,root_folder):
+        image_dict = {}
+        for file in os.listdir(root_folder):
+            if file.lower().endswith(('.jpeg', '.jpg')):
+                image_path = os.path.normpath(os.path.join(root_folder, file))
+                image = cv2.imread(image_path)
+                image_dict[image_path] = image
+        return image_dict
 
-            if len(similar_group) > 1:
-                # Add the group of similar images to the list
-                groups.append(similar_group[1:])
-                arr = np.array([similar_group[1:], correlation_values]).T
-                self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
-                similar_images_dict[similar_group[0]] = self.df
+    def SIFT_Akaze_algo(self,image,img_dict,groups,similar_group):
+        correlation_values = []
+        akaze = cv2.AKAZE_create()
+        th = self.th
+        for img in img_dict.values():
+            # Detect keypoints and compute descriptors for reference and target images
+            keypoints_ref, descriptors_ref = akaze.detectAndCompute(image, None)
+            keypoints_target, descriptors_target = akaze.detectAndCompute(img, None)
 
-            self.comparison_done.emit('comparing file:' + str(i) + "\\" + str(l) )
-        self.scriprt_done.emit(similar_images_dict)
+            # Perform AKAZE matching on the keypoints and descriptors
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            matches = bf.match(descriptors_ref, descriptors_target)
+
+            # Apply ratio test to filter good matches
+            good_matches = [match for match in matches if match.distance < 0.7 * np.max([m.distance for m in matches])]
+            num_matches = len(good_matches)
+            num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+            match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+            keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
+
+            image_key = self.get_key_by_value(img_dict,img)
+            already_in_group = any(
+                os.path.normpath(os.path.join(self.folder_path, image_key)) in group for group in groups)
+
+            if not already_in_group:
+                # Add similar image to the group
+                if keypoints_matched_ratio > th:
+                    similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_key)))
+                    correlation_values.append(str(keypoints_matched_ratio))
+
+
+        res = [similar_group,correlation_values]
+        return (res)
+
+    def Print_log_item(self,str,color):
+        item = QListWidgetItem(str)
+        item.setForeground(QColor(color))  # Set the font color to red
+        self.comparison_done.emit(item)
+        time.sleep(0.0001)
+        return item
+
+    def append_group(self,groups,similar_group,img_name,dict):
+        groups.append(similar_group[0][:])
+        arr = np.array([similar_group[0][:], similar_group[1]]).T
+        self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
+        dict[img_name] = self.df
+        return dict,groups
+
+    def get_key_by_value(self,dict, value):
+        for key, val in dict.items():
+            if np.array_equal(val, value):
+                return key
+        # If the value is not found, you can handle the situation accordingly.
+        # For example, you can return None or raise an exception.
+        return None
+
 
 
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+
+        layout = QVBoxLayout(self.widget)
+        self.plot_widget = pg.PlotWidget()
+        layout.addWidget(self.plot_widget)
+
+
         self.init_button_actions()
         self.sub_window = page(self.tableWidget)
         self.sub_window.Main_window = self
@@ -128,6 +168,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalScrollBar.valueChanged.connect(self.Event_scrollbar)
         self.similar_analysis.clicked.connect(self.checkbox_similar_images)
         self.similar_groups.activated.connect(self.display_comboBox_group)
+        self.similar_delete_all.clicked.connect(self.delete_similar_groups)
 
         self.init_appereance()
 #------------------------ init appereance GUI -----------------------
@@ -146,6 +187,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalSlider_2.hide()
         self.horizontalSlider.hide()
         self.similar_groups.hide()
+        self.similar_delete_all.hide()
 #-----------------------------------------Define actions of objects-----------------------------------------------------
     #show combobox objects
     def checkbox_similar_images(self):
@@ -217,34 +259,84 @@ class UI(Ui_MainWindow, QMainWindow):
     def select_folder(self):
         root = tk.Tk()
         root.withdraw()
-        folder_path = filedialog.askdirectory(title="select folder")
-        sender = self.sender().objectName()
-        if sender == "source_button":
-            self.Source_listWidget.clear()
-            self.Source_path = folder_path
-            self.Source_TextEdit.setPlainText(folder_path)
-            self.files_list = self.get_image_list_from_root(self.Source_path)
-            self.Source_listWidget.addItems(self.files_list)
-            temp_img = self.find_first_image(self.Source_path)
-            im = Image.open(temp_img)
-            if self.tabWidget.currentWidget().objectName() == 'crop_tab':
-                pixmap = QPixmap(temp_img)
-                self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
-                pixmap = pixmap.scaled(300, 300)
-                self.label_image.resize(300, 300)
-                self.label_image.setPixmap(pixmap)
-            elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-                self.f_object = [self.files_list, 0]
-                self.current_image_path = self.files_list[0]
-                self.image_changing(self.current_image_path)
-                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                geo = self.label_5.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_5.setPixmap(pixmap)
+        try:
+            folder_path = filedialog.askdirectory(title="select folder")
+            sender = self.sender().objectName()
+            if sender == "source_button":
+                self.Source_listWidget.clear()
+                self.Source_path = folder_path
+                self.Source_TextEdit.setPlainText(folder_path)
+                self.files_list = self.get_image_list_from_root(self.Source_path)
+                self.Source_listWidget.addItems(self.files_list)
+                temp_img = self.find_first_image(self.Source_path)
+                im = Image.open(temp_img)
+                self.image_hist_plot(im)
+
+
+
+                if self.tabWidget.currentWidget().objectName() == 'crop_tab':
+                    pixmap = QPixmap(temp_img)
+                    self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
+                    pixmap = pixmap.scaled(300, 300)
+                    self.label_image.resize(300, 300)
+                    self.label_image.setPixmap(pixmap)
+                elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+                    self.f_object = [self.files_list, 0]
+                    self.current_image_path = self.files_list[0]
+                    self.image_changing(self.current_image_path)
+                    pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+                    geo = self.label_5.geometry().getRect()
+                    pixmap = pixmap.scaled(geo[-1], geo[-1])
+                    self.label_5.setPixmap(pixmap)
+            else:
+                self.destination_TextEdit.setPlainText(folder_path)
+                self.destination_path = folder_path
+                self.destination_listWidget.clear()
+        except:
+            x=1
+
+    def image_hist_plot(self,im):
+        bands = len(im.getbands())
+        arr = np.array(im,dtype=object)
+        colors = ["red","green","blue"]
+        hist_list = []
+        if bands == 1:
+            hist_list.append(np.histogram(arr, bins=256, range=(0, 256)))
         else:
-            self.destination_TextEdit.setPlainText(folder_path)
-            self.destination_path = folder_path
-            self.destination_listWidget.clear()
+            hist_list.append(np.histogram(arr[:,:,0], bins=256, range=(0, 256)))
+            hist_list.append(np.histogram(arr[:,:,1], bins=256, range=(0, 256)))
+            hist_list.append(np.histogram(arr[:,:,2], bins=256, range=(0, 256)))
+        self.plot_widget.clear()
+        RGB_string = ""
+        if len(hist_list) == 1:
+            colors = ["black"]
+        for i,channel_hist in enumerate(hist_list):
+            counts, bins = channel_hist
+            max_indices = np.argpartition(channel_hist[0], -2)[-2:]
+            #indx = np.argmax(channel_hist[0])
+            RGB_string = RGB_string + colors[i] + ": Median=" + str(max_indices[0]) + " ,"
+            try:
+                bins_adjusted = bins[:]
+                counts = counts.astype(np.float32)
+                bins_adjusted = bins_adjusted.astype(np.float32)
+                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150),
+                                      pen=colors[i])
+                #self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+
+            except Exception as e:
+                print(e)
+
+            self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+
+            #plt.plot(bins[:-1], counts, color=colors[i], label=f"{colors[i].capitalize()}")
+            #plt.axvline(x=max_indices[0],linewidth=1, color=colors[i] , linestyle='--')
+        self.plot_widget.setLogMode(y=True)
+        self.hist_label.setText(RGB_string)
+
+
+
+
+
 
 ##############--Image extractor Tab--##################
     #scroll zoom in Image
@@ -274,19 +366,22 @@ class UI(Ui_MainWindow, QMainWindow):
     # mouse clicked on image
     def mousePressEvent(self, event):
         if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            if self.destination_TextEdit.toPlainText() == "":
-                messagebox.showinfo(title='Error massage', message='please select destination folder')
-            else:
-                img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
-                if not img2 == None:
-                    tmp_str = self.current_image_path.split('\\')
-                    img_name = tmp_str[-1]
-                    while os.path.exists(self.destination_path + '\\_' + img_name) or os.path.exists(self.destination_path + '\\' + img_name):
-                        tmp = img_name.split(".jpeg")
-                        img_name = tmp[0] + '_' + '.jpeg'
-                    img2.save(self.destination_path + '\\_' + img_name)
-                    self.write_to_logview(img_name + ' image was saved')
-                    self.next_file_in_list()
+            x = event.x()  - 2
+            y = event.y() - 43
+            if not (x < 0 or y < 0 or x > 600 or y > 600):
+                if self.destination_TextEdit.toPlainText() == "":
+                    messagebox.showinfo(title='Error massage', message='please select destination folder')
+                else:
+                    img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
+                    if not img2 == None:
+                        tmp_str = self.current_image_path.split('\\')
+                        img_name = tmp_str[-1]
+                        while os.path.exists(self.destination_path + '\\_' + img_name) or os.path.exists(self.destination_path + '\\' + img_name):
+                            tmp = img_name.split(".jpeg")
+                            img_name = tmp[0] + '_' + '.jpeg'
+                        img2.save(self.destination_path + '\\_' + img_name)
+                        self.write_to_logview(img_name + ' image was saved')
+                        self.next_file_in_list()
 
     #show next image in list
     def next_file_in_list(self):
@@ -301,6 +396,8 @@ class UI(Ui_MainWindow, QMainWindow):
             if l - 1 == file_indx :
                 self.Extractor_next.hide()
             self.image_changing(self.current_image_path)
+            im = Image.open(self.current_image_path)
+            self.image_hist_plot(im)
             pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
             geo = self.label_5.geometry().getRect()
             pixmap = pixmap.scaled(geo[-1], geo[-1])
@@ -379,22 +476,22 @@ class UI(Ui_MainWindow, QMainWindow):
         self.label_8.clear()
         self.tableWidget.clear()
         root = tk.Tk()
-        root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
-        root.withdraw()
+        try:
+            root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
+            root.withdraw()
 
-        self.Log_listwidget.clear()
-        self.write_to_logview("start searching")
+            self.Log_listwidget.clear()
+            #self.write_to_logview("start searching")
 
-        if self.hist_analysis.isChecked():
-            self.image_hist_analysis(root_folder)
+            if self.hist_analysis.isChecked():
+                self.image_hist_analysis(root_folder)
 
-        elif self.similar_analysis.isChecked():
-            self.find_similar(root_folder)
-            #similar_groups = list(self.candidates.keys())
-            #self.similar_groups.addItems(similar_groups)
-
-        else:
-            self.find_duplicate(root_folder)
+            elif self.similar_analysis.isChecked():
+                self.find_similar(root_folder)
+            else:
+                self.find_duplicate(root_folder)
+        except:
+            x=1
 
     # find identical images
     def find_duplicate(self,root_folder):
@@ -464,106 +561,26 @@ class UI(Ui_MainWindow, QMainWindow):
             self.Add_items_to_table(self.sub_window.duplicates2,flag)
             self.write_to_logview("finish comparing")
 
-    #find images with same features
-    def find_similar_images(self, folder_path):
-        self.Log_listwidget.clear()
-        self.write_to_logview("start searching")
-        image_files = os.listdir(folder_path)
-        similar_images_dict = {}
-        groups = []
-        resize_window = (400, 400, 400, 400)
-        list_len = len(image_files)
-        for i in range(list_len):
-            self.write_to_logview("comparing image :" + str(i))
-            self.progressBar.setValue(int(100*i/list_len))
-            similar_group =[]
-            sift = cv2.SIFT_create()
-            if image_files[i].split(".")[-1] == "jpeg":
-                img1 = Image.open(os.path.join(folder_path, image_files[i]))
-                img_size = img1.size
-                resize_window = (int(max(img_size)/2),int(max(img_size)/2))
-                #im1 = img1.resize(resize_window)
-                im1_new  = img1.crop((img_size[0]/2 -img_size[0]/4,img_size[1]/2 -img_size[1]/4,img_size[0]/2 + img_size[0]/4,img_size[1]/2 + img_size[1]/4))
-                #im1_new.show()
-                img1 = np.asarray(im1_new)
-                if image_files[i].split(".")[-1] == "jpeg":
-                    similar_group.append( os.path.normpath(folder_path + "\\" + image_files[i]))  # Initialize a group with the current image
-                    ref_img = [image_files[i]]
-                    correlation_values = []
-
-                    for j in range(i + 1, len(image_files)):
-                        if image_files[j].split(".")[-1]=="jpeg":
-                            sift = cv2.SIFT_create()
-                            img2 = Image.open((os.path.join(folder_path, image_files[j])))
-                            img_size = img2.size
-
-                            im2_new = img2.crop((img_size[0] / 2 - img_size[0] / 4, img_size[1] / 2 - img_size[1] / 4,
-                                                img_size[0] / 2 + img_size[0] / 4, img_size[1] / 2 + img_size[1] / 4))
-                            #im2_new.show()
-                            img2 = np.asarray(im2_new)
-                            # Detect keypoints and compute descriptors for reference and target images
-                            keypoints_ref, descriptors_ref = sift.detectAndCompute(img1, None)
-                            keypoints_target, descriptors_target = sift.detectAndCompute(img2, None)
-
-                            # Initialize the FLANN matcher
-                            FLANN_INDEX_KDTREE = 1
-                            index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-                            search_params = dict(checks=50)
-                            flann = cv2.FlannBasedMatcher(index_params, search_params)
-
-                            # Match keypoints using FLANN matcher
-                            matches = flann.knnMatch(descriptors_ref, descriptors_target, k=2)
-
-                            # Apply ratio test to filter good matches
-                            good_matches = []
-                            for m, n in matches:
-                                if m.distance < 0.7 * n.distance:
-                                    good_matches.append(m)
-                            num_matches = len(good_matches)
-                            num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
-                            match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
-                            keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(
-                                keypoints_ref) > 0 else 0.0
-                            already_in_group = False
-                            cuur_img = os.path.normpath(folder_path + "\\" + image_files[j])
-                            for group in groups:
-                                for img in group:
-                                    if cuur_img == img:
-                                        already_in_group = True
-                                        break
-
-                            if not already_in_group:
-                                # Add similar image to the group
-                                if float(keypoints_matched_ratio) > 0.5:
-                                    similar_group.append(os.path.normpath(folder_path + "\\" + image_files[j]))
-                                    correlation_values.append(keypoints_matched_ratio)
-                                # Add similar image to the group
-
-            if len(similar_group) > 1:
-                # Add the group of similar images to the list
-                groups.append(similar_group[1:])
-                arr = np.array([similar_group[1:], correlation_values]).T
-                self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
-                # similar_images.append(similar_group)
-                similar_images_dict[similar_group[0]] = self.df
-        self.write_to_logview("finish searching")
-        self.progressBar.setValue(100 )
-        return similar_images_dict
-
     def find_similar(self,folder_path):
-
         # Start a new worker thread for image comparison
-        worker = SIFT_Worker(folder_path)
+        worker = SIFT_Worker(folder_path,self.doubleSpinBox.value())
         worker.comparison_done.connect(self.update_list_items)
-        worker.scriprt_done.connect(self.update_similar_group)
+        worker.found_similar_group.connect(self.update_similar_group)
         worker.start()
+
     def update_similar_group(self,similar_dict):
+        self.similar_delete_all.show()
         similar_groups = list(similar_dict.keys())
         self.candidates = similar_dict
         self.similar_groups.addItems(similar_groups)
+
+    def delete_similar_groups(self):
+        for group in self.candidates.keys():
+            for image in self.candidates[group]["Images"]:
+                os.remove(image)
+
     def update_list_items(self, results):
         # Update the ListView with the list of results
-
         self.write_to_logview(results)
 
 
