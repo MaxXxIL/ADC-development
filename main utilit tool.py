@@ -124,7 +124,9 @@ class SIFT_Worker(QThread):
         groups.append(similar_group[0][:])
         arr = np.array([similar_group[0][:], similar_group[1]]).T
         self.df = pd.DataFrame(arr, columns=['Images', 'correlation'])
-        dict[img_name] = self.df
+        images_in_group = len(arr)
+        img_str  = img_name.split("\\")[-1]
+        dict[str(images_in_group) + " images in group: " + img_str] = self.df
         return dict,groups
 
     def get_key_by_value(self,dict, value):
@@ -154,6 +156,7 @@ class UI(Ui_MainWindow, QMainWindow):
 #------------- initialize all clickes ----------------------
     def init_button_actions(self):
         self.radioButton.clicked.connect(self.checkBox_set_offset)
+        self.delete_group.clicked.connect(self.delete_similar_group)
         self.source_button.clicked.connect(self.select_folder)
         self.destination_button.clicked.connect(self.select_folder)
         self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
@@ -333,8 +336,10 @@ class UI(Ui_MainWindow, QMainWindow):
         self.plot_widget.setLogMode(y=True)
         self.hist_label.setText(RGB_string)
 
-
-
+    def delete_similar_group(self):
+        xx= self.similar_groups.currentText()
+        for img in list(self.candidates[xx]['Images']):
+            os.remove(img)
 
 
 
@@ -427,6 +432,7 @@ class UI(Ui_MainWindow, QMainWindow):
 
         self.sub_window.r = self.tableWidget.currentRow()
         self.sub_window.c = self.tableWidget.currentColumn()
+        self.sub_window.close()
         self.sub_window.show()
         self.sub_window.column_max = self.tableWidget.columnCount()
 
@@ -462,7 +468,8 @@ class UI(Ui_MainWindow, QMainWindow):
         flag = 0
         img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
         self.Add_items_to_table(img_list,flag)
-        pixmap = QPixmap(self.similar_groups.currentText())
+        img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
+        pixmap = QPixmap(img_str)
         geo = self.label_8.geometry().getRect()
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_8.setPixmap(pixmap)
@@ -478,6 +485,7 @@ class UI(Ui_MainWindow, QMainWindow):
         root = tk.Tk()
         try:
             root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
+            self.root_folder = root_folder
             root.withdraw()
 
             self.Log_listwidget.clear()
