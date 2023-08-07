@@ -19,12 +19,12 @@
      <rect>
       <x>250</x>
       <y>0</y>
-      <width>1191</width>
+      <width>1221</width>
       <height>741</height>
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="crop_tab">
      <attribute name="title">
@@ -396,11 +396,6 @@
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="seperation_tab">
-     <attribute name="title">
-      <string>Images folders seperation</string>
-     </attribute>
-    </widget>
     <widget class="QWidget" name="duplicate_tab">
      <attribute name="title">
       <string>identical image finder</string>
@@ -423,7 +418,7 @@
        <rect>
         <x>20</x>
         <y>70</y>
-        <width>1141</width>
+        <width>1181</width>
         <height>641</height>
        </rect>
       </property>
@@ -602,25 +597,12 @@
        <rect>
         <x>760</x>
         <y>250</y>
-        <width>401</width>
-        <height>361</height>
+        <width>400</width>
+        <height>400</height>
        </rect>
       </property>
       <property name="text">
        <string/>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="similar_delete_all">
-      <property name="geometry">
-       <rect>
-        <x>1060</x>
-        <y>20</y>
-        <width>75</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Delete all</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_9">
@@ -661,11 +643,56 @@
        <double>0.500000000000000</double>
       </property>
      </widget>
+     <widget class="QSpinBox" name="spinBox_ROI">
+      <property name="geometry">
+       <rect>
+        <x>1071</x>
+        <y>40</y>
+        <width>51</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="minimum">
+       <number>100</number>
+      </property>
+      <property name="maximum">
+       <number>500</number>
+      </property>
+      <property name="singleStep">
+       <number>10</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_12">
+      <property name="geometry">
+       <rect>
+        <x>1070</x>
+        <y>20</y>
+        <width>47</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>ROI</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="similar_delete_all">
+      <property name="geometry">
+       <rect>
+        <x>1130</x>
+        <y>10</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Delete all</string>
+      </property>
+     </widget>
      <widget class="QPushButton" name="delete_group">
       <property name="geometry">
        <rect>
-        <x>1060</x>
-        <y>50</y>
+        <x>1130</x>
+        <y>40</y>
         <width>75</width>
         <height>21</height>
        </rect>

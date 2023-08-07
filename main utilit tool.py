@@ -217,6 +217,10 @@ class UI(Ui_MainWindow, QMainWindow):
         self.label_3.hide()
         self.plainTextEdit.hide()
         self.Recipe_seperate.hide()
+        self.doubleSpinBox.hide()
+        self.doubleSpinBox.hide()
+        self.spinBox_ROI.hide()
+        self.label_12.hide()
 
 #-----------------------------------------checkbox-----------------------------------------------------
     def checkbox_similar_images(self):
@@ -235,11 +239,20 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_upper.hide()
             self.hist_lower.hide()
             self.horizontalSlider_2.hide()
-            self.delete_group.show()
+
+            self.label_9.show()
+            self.label_12.show()
+            self.doubleSpinBox.show()
+            self.spinBox_ROI.show()
         else:
             self.sub_window.similar_analysis = 0
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1100, 591))
             self.similar_groups.hide()
+            self.label_9.hide()
+            self.label_12.hide()
+            self.doubleSpinBox.hide()
+            self.spinBox_ROI.hide()
+            self.delete_group.hide()
 
     #show histogram objects
     def checkbox_histogram_view(self):
@@ -297,12 +310,12 @@ class UI(Ui_MainWindow, QMainWindow):
         try:
             folder_path = filedialog.askdirectory(title="select folder")
             sender = self.sender().objectName()
+            self.Source_path = folder_path
+            self.Source_TextEdit.setPlainText(folder_path)
+            self.destination_TextEdit.setPlainText(folder_path)
+            self.destination_path = folder_path
             if sender == "source_button":
-                #self.Source_listWidget.clear()
-                self.Source_path = folder_path
-                self.Source_TextEdit.setPlainText(folder_path)
                 self.files_list = self.get_image_list_from_root(self.Source_path)
-                #self.Source_listWidget.addItems(self.files_list)
                 temp_img = self.find_first_image(self.Source_path)
                 im = Image.open(temp_img)
                 self.image_hist_plot(im)
@@ -321,10 +334,16 @@ class UI(Ui_MainWindow, QMainWindow):
                     geo = self.label_5.geometry().getRect()
                     pixmap = pixmap.scaled(geo[-1], geo[-1])
                     self.label_5.setPixmap(pixmap)
-            else:
-                self.destination_TextEdit.setPlainText(folder_path)
-                self.destination_path = folder_path
-                self.destination_listWidget.clear()
+                else:
+                    #get ROI
+                    ROI = self.spinBox_ROI.value()
+                    geo = self.label_8.geometry()
+                    resized_im = im.resize(geo[2],geo[3])
+
+                    # add rect by ROI
+                    #plot into pixmap
+                    x=1
+
         except:
             x=1
 
@@ -426,6 +445,7 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_8.setPixmap(pixmap)
         self.sub_window.duplicates2 = list(self.candidates[self.similar_groups.currentText()]["Images"])
+        self.delete_group.show()
 
     def update_time_in_log(self, t):
         self.write_to_logview("Compare took: " + str(t) + " seconds")
@@ -615,6 +635,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.write_to_logview("loading images before performing analysis")
         self.label_8.clear()
         self.tableWidget.clear()
+        self.tableWidget.setRowCount(0)
         root = tk.Tk()
         try:
             root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
