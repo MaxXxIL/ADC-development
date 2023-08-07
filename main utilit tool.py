@@ -52,12 +52,12 @@ class SIFT_Worker(QThread):
             del image_dict[path_list[0]]
 
             #finding similar group
-            t_clock1 = datetime.now()
+            #t_clock1 = datetime.now()
             similar_group = self.SIFT_Akaze_algo(img1, image_dict, groups, similar_group)
-            t_clock2 = datetime.now()
-            d_time = (t_clock2 - t_clock1)
+            #t_clock2 = datetime.now()
+            #d_time = (t_clock2 - t_clock1)
             #delta = d_time.seconds
-            self.delta.emit(str(d_time.seconds))
+            #self.delta.emit(str(d_time.seconds))
             similar_images_len = len(similar_group[0])
 
             if similar_images_len > 0:
@@ -155,7 +155,6 @@ class SIFT_Worker(QThread):
         # If the value is not found, you can handle the situation accordingly.
         # For example, you can return None or raise an exception.
         return None
-
 
 
 class UI(Ui_MainWindow, QMainWindow):
@@ -465,7 +464,7 @@ class UI(Ui_MainWindow, QMainWindow):
             outline="red", width=6)
         i.save(os.getcwd() + '\\tmp.jpeg')
 
-    #---------------------Events---------------------------
+#---------------------Events---------------------------
 
 
     #scroll zoom in Image
@@ -494,6 +493,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
         self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
         self.find_hist_outliers()
+
     #Zoom scrollbar change image extravtor display zoom
     def Event_scrollbar(self):
                 list = self.f_object[0]
@@ -788,9 +788,6 @@ class UI(Ui_MainWindow, QMainWindow):
         return files_list
 
 
-# --------------- actiones --------------------------
-
-
 #-----------------------Image proccesing ------------------------- ----------------
 
 
@@ -943,7 +940,6 @@ class UI(Ui_MainWindow, QMainWindow):
         shutil.copyfile(os.path.normpath(root + '\\ADC\\Surface2Bump.csv'), os.path.normpath(
             destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\Surface2Bump.csv'))
 
-
 #------------------------ GUI updates ----------------------------------
 
     #write logs to logview
@@ -1009,9 +1005,6 @@ class UI(Ui_MainWindow, QMainWindow):
         geo = self.label_7.geometry().getRect()
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_7.setPixmap(pixmap)
-
-
-
 
 #Init app
 if __name__ == "__main__":
