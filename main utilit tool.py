@@ -28,9 +28,10 @@ class SIFT_Worker(QThread):
     found_similar_group = pyqtSignal(dict)
     precentage = pyqtSignal(float)
     delta = pyqtSignal(str)
-    def __init__(self, folder_path,th):
+    def __init__(self, folder_path,th,roi):
         super(SIFT_Worker, self).__init__()
         self.folder_path = folder_path
+        self.ROI = roi
         self.th = th
         self.results = []
 
@@ -93,7 +94,7 @@ class SIFT_Worker(QThread):
                 y2 = int(hight / 2 + 200)
                 cropped = image[x1:x2,y1:y2]
                 resized = cv2.resize(cropped, (224,224), interpolation=cv2.INTER_AREA)
-                image_dict[image_path] = resized
+                image_dict[image_path] = image
         self.precentage.emit(100)
         return image_dict
 
@@ -101,10 +102,12 @@ class SIFT_Worker(QThread):
         correlation_values = []
         akaze = cv2.AKAZE_create()
         th = self.th
-        keypoints_ref, descriptors_ref = akaze.detectAndCompute(image, None)
+        croped_image_ref = self.resize_image_arr(image)
+        keypoints_ref, descriptors_ref = akaze.detectAndCompute(croped_image_ref, None)
         for img in img_dict.values():
             # Detect keypoints and compute descriptors for reference and target images
-            keypoints_target, descriptors_target = akaze.detectAndCompute(img, None)
+            croped_image_tar = self.resize_image_arr(img)
+            keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
 
             # Perform AKAZE matching on the keypoints and descriptors
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -157,7 +160,16 @@ class SIFT_Worker(QThread):
         # For example, you can return None or raise an exception.
         return None
 
-
+    def resize_image_arr(self,arr):
+        geo = arr.shape
+        mid_x = int(geo[0] / 2)
+        mid_y = int(geo[1] / 2)
+        x1 = mid_x - self.ROI
+        x2 = mid_x + self.ROI
+        y1 = mid_y - self.ROI
+        y2 = mid_y + self.ROI
+        image_arr = arr[x1:x2, y1:y2]
+        return image_arr
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
         super().__init__()
@@ -193,6 +205,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.similar_delete_all.clicked.connect(self.delete_similar_groups)
         self.Crop_checkbox.clicked.connect(self.Checkbox_crop)
         self.seperate_checkbox.clicked.connect(self.Checkbox_seperate)
+        self.spinBox_ROI.valueChanged.connect(self.draw_ROI)
         self.init_appereance()
 
 #------------------------ init appereance GUI -----------------------
@@ -221,6 +234,8 @@ class UI(Ui_MainWindow, QMainWindow):
         self.doubleSpinBox.hide()
         self.spinBox_ROI.hide()
         self.label_12.hide()
+        self.Source_path=""
+        self.destination_path=""
 
 #-----------------------------------------checkbox-----------------------------------------------------
     def checkbox_similar_images(self):
@@ -307,45 +322,39 @@ class UI(Ui_MainWindow, QMainWindow):
     def select_folder(self):
         root = tk.Tk()
         root.withdraw()
-        try:
-            folder_path = filedialog.askdirectory(title="select folder")
-            sender = self.sender().objectName()
+        folder_path = filedialog.askdirectory(title="select folder")
+        sender = self.sender().objectName()
+        self.root_folder = folder_path
+        if sender == "source_button":
             self.Source_path = folder_path
             self.Source_TextEdit.setPlainText(folder_path)
+            self.files_list = self.get_image_list_from_root(self.Source_path)
+            temp_img = self.find_first_image(self.Source_path)
+            im = Image.open(temp_img)
+            self.image_hist_plot(im)
+            if self.tabWidget.currentWidget().objectName() == 'crop_tab':
+                pixmap = QPixmap(temp_img)
+                self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
+                geo = self.label_image.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_image.setPixmap(pixmap)
+            elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+                self.f_object = [self.files_list, 0]
+                self.current_image_path = self.files_list[0]
+                self.image_changing(self.current_image_path)
+                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+                geo = self.label_5.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_5.setPixmap(pixmap)
+            else:
+                #get ROI
+                self.curr_im = im
+                self.draw_ROI()
+
+        else:
             self.destination_TextEdit.setPlainText(folder_path)
             self.destination_path = folder_path
-            if sender == "source_button":
-                self.files_list = self.get_image_list_from_root(self.Source_path)
-                temp_img = self.find_first_image(self.Source_path)
-                im = Image.open(temp_img)
-                self.image_hist_plot(im)
-                if self.tabWidget.currentWidget().objectName() == 'crop_tab':
-                    pixmap = QPixmap(temp_img)
-                    self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
-                    geo = self.label_image.geometry().getRect()
-                    pixmap = pixmap.scaled(geo[-1], geo[-1])
-                    #self.label_image.resize(300, 300)
-                    self.label_image.setPixmap(pixmap)
-                elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-                    self.f_object = [self.files_list, 0]
-                    self.current_image_path = self.files_list[0]
-                    self.image_changing(self.current_image_path)
-                    pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                    geo = self.label_5.geometry().getRect()
-                    pixmap = pixmap.scaled(geo[-1], geo[-1])
-                    self.label_5.setPixmap(pixmap)
-                else:
-                    #get ROI
-                    ROI = self.spinBox_ROI.value()
-                    geo = self.label_8.geometry()
-                    resized_im = im.resize(geo[2],geo[3])
 
-                    # add rect by ROI
-                    #plot into pixmap
-                    x=1
-
-        except:
-            x=1
 
     #show next image in list
     def next_file_in_list(self):
@@ -440,10 +449,8 @@ class UI(Ui_MainWindow, QMainWindow):
         img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
         self.Add_items_to_table(img_list,flag)
         img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
-        pixmap = QPixmap(img_str)
-        geo = self.label_8.geometry().getRect()
-        pixmap = pixmap.scaled(geo[-1], geo[-1])
-        self.label_8.setPixmap(pixmap)
+        self.curr_im = Image.open(img_str)
+        self.draw_ROI()
         self.sub_window.duplicates2 = list(self.candidates[self.similar_groups.currentText()]["Images"])
         self.delete_group.show()
 
@@ -630,27 +637,24 @@ class UI(Ui_MainWindow, QMainWindow):
 #-----------------------calculation and analysis-------------------------
 
     def start_analysis(self):
-        self.similar_groups.clear()
-        self.Log_listwidget.clear()
-        self.write_to_logview("loading images before performing analysis")
-        self.label_8.clear()
-        self.tableWidget.clear()
-        self.tableWidget.setRowCount(0)
-        root = tk.Tk()
-        try:
-            root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
-            self.root_folder = root_folder
-            root.withdraw()
+        if not self.Source_path == "":
+            self.similar_groups.clear()
+            self.Log_listwidget.clear()
+            self.write_to_logview("loading images before performing analysis")
+            #self.label_8.clear()
+            self.tableWidget.clear()
+            self.tableWidget.setRowCount(0)
+
             if self.hist_analysis.isChecked():
-                self.image_hist_analysis(root_folder)
-
+                self.image_hist_analysis(self.Source_path)
             elif self.similar_analysis.isChecked():
-                self.find_similar(root_folder)
+                self.find_similar(self.Source_path)
             else:
-                self.find_duplicate(root_folder)
-        except:
-            x=1
-
+                self.find_duplicate(self.Source_path)
+        else:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showinfo(title='Error massage', message='Please choose source folder')
     # find identical images
     def find_duplicate(self,root_folder):
         flag = 1
@@ -721,7 +725,7 @@ class UI(Ui_MainWindow, QMainWindow):
 
     def find_similar(self,folder_path):
         # Start a new worker thread for image comparison
-        worker = SIFT_Worker(folder_path,self.doubleSpinBox.value())
+        worker = SIFT_Worker(folder_path,self.doubleSpinBox.value(),self.spinBox_ROI.value())
         worker.comparison_done.connect(self.update_list_items)
         worker.found_similar_group.connect(self.update_similar_group)
         worker.precentage.connect(self.update_bar)
@@ -1136,6 +1140,22 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_7.setPixmap(pixmap)
 
+    def draw_ROI(self):
+        im = self.curr_im
+        ROI = self.spinBox_ROI.value()
+        geo = self.label_8.geometry().getRect()
+        resized_im = im.resize([geo[2], geo[3]])
+        draw = ImageDraw.Draw(resized_im)
+        middle_frame = geo[2] / 2
+        draw.rectangle([middle_frame - ROI / 2,
+                        middle_frame - ROI / 2,
+                        middle_frame + ROI / 2,
+                        middle_frame + ROI / 2],
+                       outline="blue", width=2)
+        resized_im.save(os.getcwd() + '\\tmp.jpeg')
+        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+        self.label_8.setPixmap(pixmap)
+        x=1
 #Init app
 if __name__ == "__main__":
     app=QApplication(sys.argv)
