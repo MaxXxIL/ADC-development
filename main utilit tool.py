@@ -2,6 +2,7 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 import cv2
+from datetime import datetime
 import math
 import sys
 import shutil
@@ -24,7 +25,8 @@ import time
 class SIFT_Worker(QThread):
     comparison_done = pyqtSignal(QListWidgetItem)  # Signal to indicate the comparison is done
     found_similar_group = pyqtSignal(dict)
-
+    precentage = pyqtSignal(float)
+    delta = pyqtSignal(str)
     def __init__(self, folder_path,th):
         super(SIFT_Worker, self).__init__()
         self.folder_path = folder_path
@@ -50,7 +52,12 @@ class SIFT_Worker(QThread):
             del image_dict[path_list[0]]
 
             #finding similar group
+            t_clock1 = datetime.now()
             similar_group = self.SIFT_Akaze_algo(img1, image_dict, groups, similar_group)
+            t_clock2 = datetime.now()
+            d_time = (t_clock2 - t_clock1)
+            #delta = d_time.seconds
+            self.delta.emit(str(d_time.seconds))
             similar_images_len = len(similar_group[0])
 
             if similar_images_len > 0:
@@ -72,26 +79,38 @@ class SIFT_Worker(QThread):
 
     def load_images_to_dict(self,root_folder):
         image_dict = {}
-        for file in os.listdir(root_folder):
+        file_list = os.listdir(root_folder)
+        for i,file in enumerate(file_list):
+            self.precentage.emit(i/len(file_list)*100)
             if file.lower().endswith(('.jpeg', '.jpg')):
                 image_path = os.path.normpath(os.path.join(root_folder, file))
                 image = cv2.imread(image_path)
-                image_dict[image_path] = image
+                width, hight, bands = image.shape
+                x1 = int(width / 2 - 200)
+                x2 = int(width / 2 + 200)
+                y1 = int(hight / 2 - 200)
+                y2 = int(hight / 2 + 200)
+                cropped = image[x1:x2,y1:y2]
+                resized = cv2.resize(cropped, (224,224), interpolation=cv2.INTER_AREA)
+                image_dict[image_path] = resized
+        self.precentage.emit(100)
         return image_dict
 
     def SIFT_Akaze_algo(self,image,img_dict,groups,similar_group):
         correlation_values = []
         akaze = cv2.AKAZE_create()
         th = self.th
+        keypoints_ref, descriptors_ref = akaze.detectAndCompute(image, None)
         for img in img_dict.values():
             # Detect keypoints and compute descriptors for reference and target images
-            keypoints_ref, descriptors_ref = akaze.detectAndCompute(image, None)
             keypoints_target, descriptors_target = akaze.detectAndCompute(img, None)
 
             # Perform AKAZE matching on the keypoints and descriptors
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-            matches = bf.match(descriptors_ref, descriptors_target)
-
+            try:
+                matches = bf.match(descriptors_ref, descriptors_target)
+            except Exception as e:
+                print(e)
             # Apply ratio test to filter good matches
             good_matches = [match for match in matches if match.distance < 0.7 * np.max([m.distance for m in matches])]
             num_matches = len(good_matches)
@@ -191,8 +210,9 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalSlider.hide()
         self.similar_groups.hide()
         self.similar_delete_all.hide()
-#-----------------------------------------Define actions of objects-----------------------------------------------------
-    #show combobox objects
+        self.delete_group.hide()
+        self.label_9.hide()
+#-----------------------------------------checkbox-----------------------------------------------------
     def checkbox_similar_images(self):
         if self.similar_analysis.isChecked():
             self.similar_groups.show()
@@ -209,6 +229,7 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_upper.hide()
             self.hist_lower.hide()
             self.horizontalSlider_2.hide()
+            self.delete_group.show()
         else:
             self.sub_window.similar_analysis = 0
             self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1100, 591))
@@ -257,7 +278,7 @@ class UI(Ui_MainWindow, QMainWindow):
             self.x_offset_text.hide()
             self.y_offset_text.hide()
 
-#---------------------------------------------Handle events-------------------------------------------------------------
+#---------------------------------------------Push buttons-------------------------------------------------------------
 ##############--Generic Tab--##################
     def select_folder(self):
         root = tk.Tk()
@@ -298,96 +319,6 @@ class UI(Ui_MainWindow, QMainWindow):
         except:
             x=1
 
-    def image_hist_plot(self,im):
-        bands = len(im.getbands())
-        arr = np.array(im,dtype=object)
-        colors = ["red","green","blue"]
-        hist_list = []
-        if bands == 1:
-            hist_list.append(np.histogram(arr, bins=256, range=(0, 256)))
-        else:
-            hist_list.append(np.histogram(arr[:,:,0], bins=256, range=(0, 256)))
-            hist_list.append(np.histogram(arr[:,:,1], bins=256, range=(0, 256)))
-            hist_list.append(np.histogram(arr[:,:,2], bins=256, range=(0, 256)))
-        self.plot_widget.clear()
-        RGB_string = ""
-        if len(hist_list) == 1:
-            colors = ["black"]
-        for i,channel_hist in enumerate(hist_list):
-            counts, bins = channel_hist
-            max_indices = np.argpartition(channel_hist[0], -2)[-2:]
-            #indx = np.argmax(channel_hist[0])
-            RGB_string = RGB_string + colors[i] + ": Median=" + str(max_indices[0]) + " ,"
-            try:
-                bins_adjusted = bins[:]
-                counts = counts.astype(np.float32)
-                bins_adjusted = bins_adjusted.astype(np.float32)
-                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150),
-                                      pen=colors[i])
-                #self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
-
-            except Exception as e:
-                print(e)
-
-            self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
-
-            #plt.plot(bins[:-1], counts, color=colors[i], label=f"{colors[i].capitalize()}")
-            #plt.axvline(x=max_indices[0],linewidth=1, color=colors[i] , linestyle='--')
-        self.plot_widget.setLogMode(y=True)
-        self.hist_label.setText(RGB_string)
-
-    def delete_similar_group(self):
-        xx= self.similar_groups.currentText()
-        for img in list(self.candidates[xx]['Images']):
-            os.remove(img)
-
-
-
-##############--Image extractor Tab--##################
-    #scroll zoom in Image
-    def wheelEvent(self, event):
-        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            scrollDistance = event.angleDelta().y()
-            numDegrees = event.angleDelta() / 8
-            numSteps = numDegrees / 15
-            if scrollDistance > 0:
-                zoom_indx = -1*numSteps.manhattanLength()
-            else:
-                zoom_indx = numSteps.manhattanLength()
-            s_indx = self.horizontalScrollBar.value()
-            self.horizontalScrollBar.setValue(s_indx + zoom_indx)
-
-#--------------- actiones --------------------------
-    def Event_scrollbar(self):
-                list = self.f_object[0]
-                file_indx = self.f_object[1]
-                self.current_image_path = list[file_indx]
-                self.image_changing(self.current_image_path)
-                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                geo = self.label_5.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_5.setPixmap(pixmap)
-
-    # mouse clicked on image
-    def mousePressEvent(self, event):
-        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            x = event.x()  - 2
-            y = event.y() - 43
-            if not (x < 0 or y < 0 or x > 600 or y > 600):
-                if self.destination_TextEdit.toPlainText() == "":
-                    messagebox.showinfo(title='Error massage', message='please select destination folder')
-                else:
-                    img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
-                    if not img2 == None:
-                        tmp_str = self.current_image_path.split('\\')
-                        img_name = tmp_str[-1]
-                        while os.path.exists(self.destination_path + '\\_' + img_name) or os.path.exists(self.destination_path + '\\' + img_name):
-                            tmp = img_name.split(".jpeg")
-                            img_name = tmp[0] + '_' + '.jpeg'
-                        img2.save(self.destination_path + '\\_' + img_name)
-                        self.write_to_logview(img_name + ' image was saved')
-                        self.next_file_in_list()
-
     #show next image in list
     def next_file_in_list(self):
 
@@ -427,7 +358,174 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_5.setPixmap(pixmap)
 
-    # open Image in plot view
+    def delete_similar_group(self):
+        xx= self.similar_groups.currentText()
+        for img in list(self.candidates[xx]['Images']):
+            os.remove(img)
+
+    def delete_similar_groups(self):
+        for group in self.candidates.keys():
+            for image in self.candidates[group]["Images"]:
+                os.remove(image)
+
+
+# ------------------------------ GUI Updates---------------
+    def image_hist_plot(self,im):
+        bands = len(im.getbands())
+        arr = np.array(im,dtype=object)
+        colors = ["red","green","blue"]
+        hist_list = []
+        if bands == 1:
+            hist_list.append(np.histogram(arr, bins=256, range=(0, 256)))
+        else:
+            hist_list.append(np.histogram(arr[:,:,0], bins=256, range=(0, 256)))
+            hist_list.append(np.histogram(arr[:,:,1], bins=256, range=(0, 256)))
+            hist_list.append(np.histogram(arr[:,:,2], bins=256, range=(0, 256)))
+        self.plot_widget.clear()
+        RGB_string = ""
+        if len(hist_list) == 1:
+            colors = ["black"]
+        for i,channel_hist in enumerate(hist_list):
+            counts, bins = channel_hist
+            max_indices = np.argpartition(channel_hist[0], -2)[-2:]
+            #indx = np.argmax(channel_hist[0])
+            RGB_string = RGB_string + colors[i] + ": Median=" + str(max_indices[0]) + " ,"
+            try:
+                bins_adjusted = bins[:]
+                counts = counts.astype(np.float32)
+                bins_adjusted = bins_adjusted.astype(np.float32)
+                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150),
+                                      pen=colors[i])
+                #self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+
+            except Exception as e:
+                print(e)
+
+            self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+
+            #plt.plot(bins[:-1], counts, color=colors[i], label=f"{colors[i].capitalize()}")
+            #plt.axvline(x=max_indices[0],linewidth=1, color=colors[i] , linestyle='--')
+        self.plot_widget.setLogMode(y=True)
+        self.hist_label.setText(RGB_string)
+
+    def display_comboBox_group(self):
+        flag = 0
+        img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
+        self.Add_items_to_table(img_list,flag)
+        img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
+        pixmap = QPixmap(img_str)
+        geo = self.label_8.geometry().getRect()
+        pixmap = pixmap.scaled(geo[-1], geo[-1])
+        self.label_8.setPixmap(pixmap)
+        self.sub_window.duplicates2 = list(self.candidates[self.similar_groups.currentText()]["Images"])
+
+    def update_time_in_log(self, t):
+        self.write_to_logview("Compare took: " + str(t) + " seconds")
+
+    def update_bar(self, p):
+        self.progressBar.setValue(int(p))
+
+    def update_similar_group(self, similar_dict):
+        self.similar_delete_all.show()
+        self.similar_groups.clear()
+        similar_groups = list(similar_dict.keys())
+        self.candidates = similar_dict
+        self.similar_groups.addItems(similar_groups)
+
+    def update_list_items(self, results):
+        # Update the ListView with the list of results
+        self.write_to_logview(results)
+
+    def image_changing(self, path):
+        zoom = self.horizontalScrollBar.value()
+        image_label_size = self.label_5.geometry().getRect()
+        i = Image.open(path)
+        width, height = i.size
+        self.org_width = width
+        self.org_length = height
+        self.scale = 1
+        if width != height:
+            padding = int(abs(width - height) / 2)
+            i = self.padding_image(path, padding, width, height)
+            width, height = i.size
+        if zoom < 15:
+            self.scale = 1 + 0.25 * (15 - zoom)
+            left = int((1 - 1 / self.scale) * (width / 2))
+            right = width - left
+            top = int((height / 2) * (1 - 1 / self.scale))
+            bot = height - top
+            i = i.crop((left, top, right, bot))
+
+            i = i.resize((image_label_size[2], image_label_size[3]), Image.LANCZOS)
+        draw = ImageDraw.Draw(i)
+        middle_frame = i.size[0] / 2
+        draw.rectangle(
+            [middle_frame - middle_frame / 10, middle_frame - middle_frame / 10, middle_frame + middle_frame / 10,
+             middle_frame + middle_frame / 10],
+            outline="red", width=6)
+        i.save(os.getcwd() + '\\tmp.jpeg')
+
+    #---------------------Events---------------------------
+
+
+    #scroll zoom in Image
+    def wheelEvent(self, event):
+        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+            scrollDistance = event.angleDelta().y()
+            numDegrees = event.angleDelta() / 8
+            numSteps = numDegrees / 15
+            if scrollDistance > 0:
+                zoom_indx = -1*numSteps.manhattanLength()
+            else:
+                zoom_indx = numSteps.manhattanLength()
+            s_indx = self.horizontalScrollBar.value()
+            self.horizontalScrollBar.setValue(s_indx + zoom_indx)
+
+    # display Vertical line -Lower th
+    def Scrollbar_lower_th_display(self):
+        outlier_list=[]
+        self.hist_value.setText("Value: " + str(self.horizontalSlider.value()))
+        self.plot_hist(self.horizontalSlider.value(),self.horizontalSlider_2.value())
+        self.find_hist_outliers()
+
+    # display Vertical line -Upper th
+    def Scrollbar_upper_th_display(self):
+        outlier_list = []
+        self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
+        self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
+        self.find_hist_outliers()
+    #Zoom scrollbar change image extravtor display zoom
+    def Event_scrollbar(self):
+                list = self.f_object[0]
+                file_indx = self.f_object[1]
+                self.current_image_path = list[file_indx]
+                self.image_changing(self.current_image_path)
+                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+                geo = self.label_5.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_5.setPixmap(pixmap)
+
+    # mouse clicked on image to cropp by center
+    def mousePressEvent(self, event):
+        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+            x = event.x()  - 2
+            y = event.y() - 43
+            if not (x < 0 or y < 0 or x > 600 or y > 600):
+                if self.destination_TextEdit.toPlainText() == "":
+                    messagebox.showinfo(title='Error massage', message='please select destination folder')
+                else:
+                    img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
+                    if not img2 == None:
+                        tmp_str = self.current_image_path.split('\\')
+                        img_name = tmp_str[-1]
+                        while os.path.exists(self.destination_path + '\\_' + img_name) or os.path.exists(self.destination_path + '\\' + img_name):
+                            tmp = img_name.split(".jpeg")
+                            img_name = tmp[0] + '_' + '.jpeg'
+                        img2.save(self.destination_path + '\\_' + img_name)
+                        self.write_to_logview(img_name + ' image was saved')
+                        self.next_file_in_list()
+
+    # open Image in plot view from table
     def table_clicked(self):
 
         self.sub_window.r = self.tableWidget.currentRow()
@@ -452,34 +550,12 @@ class UI(Ui_MainWindow, QMainWindow):
             self.sub_window.update_image(
                 os.path.normpath(self.sub_window.duplicates2[self.sub_window.r]))
 
-    def Scrollbar_lower_th_display(self):
-        outlier_list=[]
-        self.hist_value.setText("Value: " + str(self.horizontalSlider.value()))
-        self.plot_hist(self.horizontalSlider.value(),self.horizontalSlider_2.value())
-        self.find_hist_outliers()
-
-    def Scrollbar_upper_th_display(self):
-        outlier_list = []
-        self.hist_value_2.setText("Value: " + str(self.horizontalSlider_2.value()))
-        self.plot_hist(self.horizontalSlider.value(), self.horizontalSlider_2.value())
-        self.find_hist_outliers()
-
-    def display_comboBox_group(self):
-        flag = 0
-        img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
-        self.Add_items_to_table(img_list,flag)
-        img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
-        pixmap = QPixmap(img_str)
-        geo = self.label_8.geometry().getRect()
-        pixmap = pixmap.scaled(geo[-1], geo[-1])
-        self.label_8.setPixmap(pixmap)
-        self.sub_window.duplicates2 = list(self.candidates[self.similar_groups.currentText()]["Images"])
-
-
-##############--Image finder Tab--##################
+#-----------------------calculation and analysis-------------------------
 
     def start_analysis(self):
         self.similar_groups.clear()
+        self.Log_listwidget.clear()
+        self.write_to_logview("loading images before performing analysis")
         self.label_8.clear()
         self.tableWidget.clear()
         root = tk.Tk()
@@ -487,10 +563,6 @@ class UI(Ui_MainWindow, QMainWindow):
             root_folder = filedialog.askdirectory(parent=root, title="Select Folder")
             self.root_folder = root_folder
             root.withdraw()
-
-            self.Log_listwidget.clear()
-            #self.write_to_logview("start searching")
-
             if self.hist_analysis.isChecked():
                 self.image_hist_analysis(root_folder)
 
@@ -574,23 +646,9 @@ class UI(Ui_MainWindow, QMainWindow):
         worker = SIFT_Worker(folder_path,self.doubleSpinBox.value())
         worker.comparison_done.connect(self.update_list_items)
         worker.found_similar_group.connect(self.update_similar_group)
+        worker.precentage.connect(self.update_bar)
+        worker.delta.connect(self.update_time_in_log)
         worker.start()
-
-    def update_similar_group(self,similar_dict):
-        self.similar_delete_all.show()
-        similar_groups = list(similar_dict.keys())
-        self.candidates = similar_dict
-        self.similar_groups.addItems(similar_groups)
-
-    def delete_similar_groups(self):
-        for group in self.candidates.keys():
-            for image in self.candidates[group]["Images"]:
-                os.remove(image)
-
-    def update_list_items(self, results):
-        # Update the ListView with the list of results
-        self.write_to_logview(results)
-
 
     # calculate hist of images
     def image_hist_analysis(self,root_folder):
@@ -623,36 +681,118 @@ class UI(Ui_MainWindow, QMainWindow):
         min_v = min(self.val_list)
         self.Display_hist(self.val_list, min_v, max_v)
 
-#------------------------------------------------GUI functions----------------------------------------------------------
+    #find first image in root folders
+    def find_first_image(self, root_path):
+        for root, dirs, files in os.walk(root_path):
+            for file in files:
+                arr = file.split(".")
+                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
+                    img_path = os.path.normpath(root + "/" + file )
+                    return img_path
 
-# ------------------Image proccesing ----------------
-    #change image in image_extractor view
-    def image_changing(self,path):
-        zoom = self.horizontalScrollBar.value()
-        image_label_size = self.label_5.geometry().getRect()
-        i = Image.open(path)
-        width, height = i.size
-        self.org_width = width
-        self.org_length = height
-        self.scale = 1
-        if width != height:
-            padding = int(abs(width - height) / 2)
-            i = self.padding_image(path,padding,width,height)
-            width, height = i.size
-        if zoom < 15:
-            self.scale = 1 + 0.25*(15 - zoom)
-            left = int((1-1/self.scale)*(width/2))
-            right = width - left
-            top = int((height/2)*(1-1/self.scale))
-            bot = height - top
-            i = i.crop((left, top, right, bot))
+    #seperate images into subfolders
+    def seperate_images(self):
+        self.progressBar.setValue(0)
+        path = self.Source_path
+        #Simple seperation without recipe
+        if not self.checkBox.isChecked():
+            try:
+                N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
+                self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
+                folder_num = 0
+                #create the first folder0
+                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+                os.makedirs(folder_path)
+                #loop throught all subfolders in path
+                for root, dirs, files in os.walk(path):
+                    l  = len(files)
+                    for i ,file in enumerate(files):
+                        self.progressBar.setValue(i/l)
+                        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+                            #check if folder is full to max images
+                            if len(os.listdir(folder_path)) >= N:
+                                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+                                os.makedirs(folder_path)
+                                self.write_to_logview("subfolder: " + str(folder_num) + "ready")
+                                folder_num += 1
+                            shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
+                self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
+            except:
+                QMessageBox.about(self, "Error msg", "please selects input folder")
 
-            i = i.resize((image_label_size[2],image_label_size[3]), Image.LANCZOS)
-        draw = ImageDraw.Draw(i)
-        middle_frame = i.size[0]/2
-        draw.rectangle([middle_frame - middle_frame/10 , middle_frame - middle_frame/10,middle_frame + middle_frame/10 , middle_frame + middle_frame/10],
-                       outline="red", width=6)
-        i.save(os.getcwd() + '\\tmp.jpeg')
+        # seperation with recipe
+        else:
+            try:
+                l = len(path)+1
+                for root, dirs, files in os.walk(path):
+                    if 'ADC' in dirs:
+                        tmp_str1 = root[l:]
+                        tmp_str = tmp_str1.split('\\')
+                        dataframe1 = pd.read_csv(root + '\\ADC\\' + 'Surface2Bump.csv')
+                        img_path_list =  dataframe1['defect_key'].values
+                        recipe_list = dataframe1['Recipe'].values
+                        for i,file in enumerate(img_path_list):
+                            try:
+                                curr_path = os.path.normpath(self.destination_path + '\\' + str(recipe_list[i]) + '\\' + tmp_str1)
+                                if not os.path.exists(curr_path):
+                                    if not os.path.exists(curr_path):
+                                        if not os.path.exists(self.destination_path + '\\' + str(recipe_list[i])):
+                                            os.mkdir(self.destination_path + '\\' + str(recipe_list[i]))
+                                    tmp_path = self.destination_path + '\\' + str(recipe_list[i])
+                                    for folder in tmp_str:
+                                        if not os.path.exists(tmp_path + '\\' +  folder):
+                                            os.mkdir(tmp_path + '\\' +  folder)
+                                        tmp_path = tmp_path + '\\' +  folder
+                                    os.mkdir(tmp_path + '\\ADC\\')
+                                    #copy ADC folder files
+                                    self.Copy_ADC_folder_files(root,str(recipe_list[i]),tmp_str1,self.destination_path)
+                                img = cv2.imread(os.path.normpath(root + '\\ADC\\' + file))
+                                avg_pixel = cv2.mean(img)[0]
+                                #check if image is not blank
+                                if avg_pixel > 10:
+                                    shutil.copyfile(os.path.normpath(root + '\\ADC\\' + file),
+                                        os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
+                            except:
+                                break
+            except:
+                QMessageBox.about(self, "Error msg", "please selects output folder")
+
+    #find outliers by th
+    def find_hist_outliers(self):
+        df = pd.DataFrame(self.val_list, columns=['hist_med'])
+        indices1 = list(df.index[df['hist_med'] < self.horizontalSlider.value()].values)
+        indices2 = list(df.index[df['hist_med'] > self.horizontalSlider_2.value()].values)
+        indices = indices1 + indices2
+        outlier_list=[]
+        self.sub_window.duplicates2 = []
+        self.tableWidget.setColumnCount(1)
+        self.tableWidget.setColumnWidth(0, 450)
+        for i in range(len(indices)):
+            img_path = self.df.iloc[int(indices[i]), 1]
+            str_tmp = QtWidgets.QTableWidgetItem(self.df.iloc[int(indices[i]), 1])
+            self.sub_window.duplicates2.append(img_path)
+            outlier_list.append(str_tmp)
+        self.tableWidget.setRowCount(len(outlier_list))
+        if outlier_list:
+            for j,item in enumerate(outlier_list):
+                self.tableWidget.setItem(j, 0, item)
+            self.tableWidget.setColumnCount(1)
+
+    def get_image_list_from_root(self, root_path):
+        files_list=[]
+        for root, dirs, files in os.walk(root_path):
+            for file in files:
+                arr = file.split(".")
+                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
+                    files_list.append(os.path.normpath(root + "/" + file ))
+        return files_list
+
+
+# --------------- actiones --------------------------
+
+
+#-----------------------Image proccesing ------------------------- ----------------
+
 
     #padding image for future use
     def padding_image(self,path,padding,width,height):
@@ -832,7 +972,7 @@ class UI(Ui_MainWindow, QMainWindow):
         else:
             self.tableWidget.setRowCount(len(duplicate_paths))
             self.tableWidget.setColumnCount(1)
-            self.tableWidget.setColumnWidth(0, 450)
+            self.tableWidget.setColumnWidth(0, 700)
             for n, path in enumerate(duplicate_paths):
                 str_tmp = QtWidgets.QTableWidgetItem(path)
                 self.tableWidget.setItem(n,0,str_tmp)
@@ -870,113 +1010,6 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_7.setPixmap(pixmap)
 
-#-----------------------calculation and analysis-------------------------
-
-    #find first image in root folders
-    def find_first_image(self, root_path):
-        for root, dirs, files in os.walk(root_path):
-            for file in files:
-                arr = file.split(".")
-                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
-                    img_path = os.path.normpath(root + "/" + file )
-                    return img_path
-
-    #seperate images into subfolders
-    def seperate_images(self):
-        self.progressBar.setValue(0)
-        path = self.Source_path
-        #Simple seperation without recipe
-        if not self.checkBox.isChecked():
-            try:
-                N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
-                self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
-                folder_num = 0
-                #create the first folder0
-                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                os.makedirs(folder_path)
-                #loop throught all subfolders in path
-                for root, dirs, files in os.walk(path):
-                    l  = len(files)
-                    for i ,file in enumerate(files):
-                        self.progressBar.setValue(i/l)
-                        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
-                            #check if folder is full to max images
-                            if len(os.listdir(folder_path)) >= N:
-                                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                                os.makedirs(folder_path)
-                                self.write_to_logview("subfolder: " + str(folder_num) + "ready")
-                                folder_num += 1
-                            shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
-                self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
-            except:
-                QMessageBox.about(self, "Error msg", "please selects input folder")
-
-        # seperation with recipe
-        else:
-            try:
-                l = len(path)+1
-                for root, dirs, files in os.walk(path):
-                    if 'ADC' in dirs:
-                        tmp_str1 = root[l:]
-                        tmp_str = tmp_str1.split('\\')
-                        dataframe1 = pd.read_csv(root + '\\ADC\\' + 'Surface2Bump.csv')
-                        img_path_list =  dataframe1['defect_key'].values
-                        recipe_list = dataframe1['Recipe'].values
-                        for i,file in enumerate(img_path_list):
-                            try:
-                                curr_path = os.path.normpath(self.destination_path + '\\' + str(recipe_list[i]) + '\\' + tmp_str1)
-                                if not os.path.exists(curr_path):
-                                    if not os.path.exists(curr_path):
-                                        if not os.path.exists(self.destination_path + '\\' + str(recipe_list[i])):
-                                            os.mkdir(self.destination_path + '\\' + str(recipe_list[i]))
-                                    tmp_path = self.destination_path + '\\' + str(recipe_list[i])
-                                    for folder in tmp_str:
-                                        if not os.path.exists(tmp_path + '\\' +  folder):
-                                            os.mkdir(tmp_path + '\\' +  folder)
-                                        tmp_path = tmp_path + '\\' +  folder
-                                    os.mkdir(tmp_path + '\\ADC\\')
-                                    #copy ADC folder files
-                                    self.Copy_ADC_folder_files(root,str(recipe_list[i]),tmp_str1,self.destination_path)
-                                img = cv2.imread(os.path.normpath(root + '\\ADC\\' + file))
-                                avg_pixel = cv2.mean(img)[0]
-                                #check if image is not blank
-                                if avg_pixel > 10:
-                                    shutil.copyfile(os.path.normpath(root + '\\ADC\\' + file),
-                                        os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
-                            except:
-                                break
-            except:
-                QMessageBox.about(self, "Error msg", "please selects output folder")
-
-    #find outliers by th
-    def find_hist_outliers(self):
-        df = pd.DataFrame(self.val_list, columns=['hist_med'])
-        indices1 = list(df.index[df['hist_med'] < self.horizontalSlider.value()].values)
-        indices2 = list(df.index[df['hist_med'] > self.horizontalSlider_2.value()].values)
-        indices = indices1 + indices2
-        outlier_list=[]
-        self.sub_window.duplicates2 = []
-        self.tableWidget.setColumnCount(1)
-        self.tableWidget.setColumnWidth(0, 450)
-        for i in range(len(indices)):
-            img_path = self.df.iloc[int(indices[i]), 1]
-            str_tmp = QtWidgets.QTableWidgetItem(self.df.iloc[int(indices[i]), 1])
-            self.sub_window.duplicates2.append(img_path)
-            outlier_list.append(str_tmp)
-        self.tableWidget.setRowCount(len(outlier_list))
-        if outlier_list:
-            for j,item in enumerate(outlier_list):
-                self.tableWidget.setItem(j, 0, item)
-            self.tableWidget.setColumnCount(1)
-
-    def get_image_list_from_root(self, root_path):
-        files_list=[]
-        for root, dirs, files in os.walk(root_path):
-            for file in files:
-                arr = file.split(".")
-                if os.path.normpath(arr[-1].lower()) in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'] :
-                    files_list.append(os.path.normpath(root + "/" + file ))
-        return files_list
 
 
 

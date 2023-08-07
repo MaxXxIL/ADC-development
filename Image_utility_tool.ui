@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1442</width>
-    <height>757</height>
+    <width>1496</width>
+    <height>777</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,10 +17,10 @@
    <widget class="QTabWidget" name="tabWidget">
     <property name="geometry">
      <rect>
-      <x>0</x>
+      <x>250</x>
       <y>0</y>
-      <width>1181</width>
-      <height>701</height>
+      <width>1191</width>
+      <height>741</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -433,7 +433,7 @@
         <x>20</x>
         <y>70</y>
         <width>1141</width>
-        <height>591</height>
+        <height>641</height>
        </rect>
       </property>
       <column>
@@ -670,7 +670,7 @@
        <double>0.500000000000000</double>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton">
+     <widget class="QPushButton" name="delete_group">
       <property name="geometry">
        <rect>
         <x>1060</x>
@@ -685,25 +685,12 @@
      </widget>
     </widget>
    </widget>
-   <widget class="QPushButton" name="destination_button">
-    <property name="geometry">
-     <rect>
-      <x>1200</x>
-      <y>80</y>
-      <width>171</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Select destination directory</string>
-    </property>
-   </widget>
    <widget class="QPlainTextEdit" name="Source_TextEdit">
     <property name="geometry">
      <rect>
-      <x>1200</x>
+      <x>10</x>
       <y>40</y>
-      <width>211</width>
+      <width>221</width>
       <height>31</height>
      </rect>
     </property>
@@ -711,24 +698,24 @@
      <string/>
     </property>
    </widget>
-   <widget class="QPlainTextEdit" name="destination_TextEdit">
+   <widget class="QLabel" name="label_10">
     <property name="geometry">
      <rect>
-      <x>1200</x>
-      <y>100</y>
-      <width>211</width>
-      <height>31</height>
+      <x>10</x>
+      <y>150</y>
+      <width>47</width>
+      <height>14</height>
      </rect>
     </property>
-    <property name="plainText">
-     <string/>
+    <property name="text">
+     <string>Loading</string>
     </property>
    </widget>
    <widget class="QPushButton" name="source_button">
     <property name="geometry">
      <rect>
-      <x>1200</x>
-      <y>20</y>
+      <x>10</x>
+      <y>10</y>
       <width>141</width>
       <height>23</height>
      </rect>
@@ -740,7 +727,7 @@
    <widget class="QProgressBar" name="progressBar">
     <property name="geometry">
      <rect>
-      <x>1210</x>
+      <x>10</x>
       <y>170</y>
       <width>201</width>
       <height>23</height>
@@ -750,27 +737,53 @@
      <number>0</number>
     </property>
    </widget>
-   <widget class="QListWidget" name="Log_listwidget">
-    <property name="geometry">
-     <rect>
-      <x>1210</x>
-      <y>230</y>
-      <width>211</width>
-      <height>461</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_4">
     <property name="geometry">
      <rect>
-      <x>1210</x>
-      <y>210</y>
+      <x>10</x>
+      <y>200</y>
       <width>101</width>
       <height>21</height>
      </rect>
     </property>
     <property name="text">
      <string>Online Log view</string>
+    </property>
+   </widget>
+   <widget class="QListWidget" name="Log_listwidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>220</y>
+      <width>211</width>
+      <height>511</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="destination_TextEdit">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>110</y>
+      <width>221</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="plainText">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="destination_button">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>80</y>
+      <width>171</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Select destination directory</string>
     </property>
    </widget>
   </widget>
@@ -780,7 +793,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1442</width>
+     <width>1496</width>
      <height>22</height>
     </rect>
    </property>
