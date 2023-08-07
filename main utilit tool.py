@@ -22,6 +22,7 @@ from tkinter import messagebox, filedialog
 import tkinter as tk
 from PIL import Image, ImageDraw
 import time
+
 class SIFT_Worker(QThread):
     comparison_done = pyqtSignal(QListWidgetItem)  # Signal to indicate the comparison is done
     found_similar_group = pyqtSignal(dict)
@@ -177,7 +178,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.delete_group.clicked.connect(self.delete_similar_group)
         self.source_button.clicked.connect(self.select_folder)
         self.destination_button.clicked.connect(self.select_folder)
-        self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
+        #self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
         self.Star_seperate.clicked.connect(self.seperate_images)
         self.seek_identical.clicked.connect(self.start_analysis)
         self.tableWidget.clicked.connect(self.table_clicked)
@@ -190,8 +191,10 @@ class UI(Ui_MainWindow, QMainWindow):
         self.similar_analysis.clicked.connect(self.checkbox_similar_images)
         self.similar_groups.activated.connect(self.display_comboBox_group)
         self.similar_delete_all.clicked.connect(self.delete_similar_groups)
-
+        self.Crop_checkbox.clicked.connect(self.Checkbox_crop)
+        self.seperate_checkbox.clicked.connect(self.Checkbox_seperate)
         self.init_appereance()
+
 #------------------------ init appereance GUI -----------------------
     def init_appereance(self):
         self.setWindowTitle("ADC utility tool")
@@ -211,6 +214,10 @@ class UI(Ui_MainWindow, QMainWindow):
         self.similar_delete_all.hide()
         self.delete_group.hide()
         self.label_9.hide()
+        self.label_3.hide()
+        self.plainTextEdit.hide()
+        self.Recipe_seperate.hide()
+
 #-----------------------------------------checkbox-----------------------------------------------------
     def checkbox_similar_images(self):
         if self.similar_analysis.isChecked():
@@ -277,8 +284,13 @@ class UI(Ui_MainWindow, QMainWindow):
             self.x_offset_text.hide()
             self.y_offset_text.hide()
 
+    def Checkbox_crop(self):
+        self.Crop_seperate_toggle(self.Crop_checkbox.isChecked())
+
+    def Checkbox_seperate(self):
+        self.Crop_seperate_toggle(self.Crop_checkbox.isChecked())
+
 #---------------------------------------------Push buttons-------------------------------------------------------------
-##############--Generic Tab--##################
     def select_folder(self):
         root = tk.Tk()
         root.withdraw()
@@ -286,22 +298,20 @@ class UI(Ui_MainWindow, QMainWindow):
             folder_path = filedialog.askdirectory(title="select folder")
             sender = self.sender().objectName()
             if sender == "source_button":
-                self.Source_listWidget.clear()
+                #self.Source_listWidget.clear()
                 self.Source_path = folder_path
                 self.Source_TextEdit.setPlainText(folder_path)
                 self.files_list = self.get_image_list_from_root(self.Source_path)
-                self.Source_listWidget.addItems(self.files_list)
+                #self.Source_listWidget.addItems(self.files_list)
                 temp_img = self.find_first_image(self.Source_path)
                 im = Image.open(temp_img)
                 self.image_hist_plot(im)
-
-
-
                 if self.tabWidget.currentWidget().objectName() == 'crop_tab':
                     pixmap = QPixmap(temp_img)
                     self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
-                    pixmap = pixmap.scaled(300, 300)
-                    self.label_image.resize(300, 300)
+                    geo = self.label_image.geometry().getRect()
+                    pixmap = pixmap.scaled(geo[-1], geo[-1])
+                    #self.label_image.resize(300, 300)
                     self.label_image.setPixmap(pixmap)
                 elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
                     self.f_object = [self.files_list, 0]
@@ -366,7 +376,6 @@ class UI(Ui_MainWindow, QMainWindow):
         for group in self.candidates.keys():
             for image in self.candidates[group]["Images"]:
                 os.remove(image)
-
 
 # ------------------------------ GUI Updates---------------
     def image_hist_plot(self,im):
@@ -464,7 +473,55 @@ class UI(Ui_MainWindow, QMainWindow):
             outline="red", width=6)
         i.save(os.getcwd() + '\\tmp.jpeg')
 
-#---------------------Events---------------------------
+
+    def Crop_seperate_toggle(self,crop):
+        sender = self.sender().objectName()
+        if sender == 'seperate_checkbox':
+            if not crop:
+                case = 1
+            else:
+                case = 0
+        else:
+            if not crop:
+                case = 0
+            else:
+                case = 1
+        self.hide_show_prop(case)
+
+
+    def hide_show_prop(self,case):
+        if case:
+            self.label_3.hide()
+            self.seperate_checkbox.setChecked(0)
+            self.Crop_checkbox.setChecked(1)
+            self.plainTextEdit.hide()
+            self.Recipe_seperate.hide()
+            self.label_2.show()
+            self.radioButton.show()
+            self.text2.show()
+            self.output_X_size.show()
+            self.output_Y_size.show()
+            self.text2_2.show()
+
+        else:
+            self.label_3.show()
+            self.seperate_checkbox.setChecked(1)
+            self.Crop_checkbox.setChecked(0)
+            self.plainTextEdit.show()
+            self.Recipe_seperate.show()
+            self.label_2.hide()
+            self.radioButton.hide()
+            self.radioButton.setChecked(0)
+            self.text2.hide()
+            self.output_X_size.hide()
+            self.output_Y_size.hide()
+            self.text2_2.hide()
+            self.x_offset_text.hide()
+            self.y_offset_text.hide()
+            self.offset_x.hide()
+            self.offset_y.hide()
+
+#-------------------------Events---------------------------
 
 
     #scroll zoom in Image
@@ -690,73 +747,6 @@ class UI(Ui_MainWindow, QMainWindow):
                     img_path = os.path.normpath(root + "/" + file )
                     return img_path
 
-    #seperate images into subfolders
-    def seperate_images(self):
-        self.progressBar.setValue(0)
-        path = self.Source_path
-        #Simple seperation without recipe
-        if not self.checkBox.isChecked():
-            try:
-                N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
-                self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
-                folder_num = 0
-                #create the first folder0
-                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                os.makedirs(folder_path)
-                #loop throught all subfolders in path
-                for root, dirs, files in os.walk(path):
-                    l  = len(files)
-                    for i ,file in enumerate(files):
-                        self.progressBar.setValue(i/l)
-                        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
-                            #check if folder is full to max images
-                            if len(os.listdir(folder_path)) >= N:
-                                folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                                os.makedirs(folder_path)
-                                self.write_to_logview("subfolder: " + str(folder_num) + "ready")
-                                folder_num += 1
-                            shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
-                self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
-            except:
-                QMessageBox.about(self, "Error msg", "please selects input folder")
-
-        # seperation with recipe
-        else:
-            try:
-                l = len(path)+1
-                for root, dirs, files in os.walk(path):
-                    if 'ADC' in dirs:
-                        tmp_str1 = root[l:]
-                        tmp_str = tmp_str1.split('\\')
-                        dataframe1 = pd.read_csv(root + '\\ADC\\' + 'Surface2Bump.csv')
-                        img_path_list =  dataframe1['defect_key'].values
-                        recipe_list = dataframe1['Recipe'].values
-                        for i,file in enumerate(img_path_list):
-                            try:
-                                curr_path = os.path.normpath(self.destination_path + '\\' + str(recipe_list[i]) + '\\' + tmp_str1)
-                                if not os.path.exists(curr_path):
-                                    if not os.path.exists(curr_path):
-                                        if not os.path.exists(self.destination_path + '\\' + str(recipe_list[i])):
-                                            os.mkdir(self.destination_path + '\\' + str(recipe_list[i]))
-                                    tmp_path = self.destination_path + '\\' + str(recipe_list[i])
-                                    for folder in tmp_str:
-                                        if not os.path.exists(tmp_path + '\\' +  folder):
-                                            os.mkdir(tmp_path + '\\' +  folder)
-                                        tmp_path = tmp_path + '\\' +  folder
-                                    os.mkdir(tmp_path + '\\ADC\\')
-                                    #copy ADC folder files
-                                    self.Copy_ADC_folder_files(root,str(recipe_list[i]),tmp_str1,self.destination_path)
-                                img = cv2.imread(os.path.normpath(root + '\\ADC\\' + file))
-                                avg_pixel = cv2.mean(img)[0]
-                                #check if image is not blank
-                                if avg_pixel > 10:
-                                    shutil.copyfile(os.path.normpath(root + '\\ADC\\' + file),
-                                        os.path.normpath(self.destination_path  + '\\' + str(recipe_list[i]) + '\\' + tmp_str1 + '\\ADC\\' + file))
-                            except:
-                                break
-            except:
-                QMessageBox.about(self, "Error msg", "please selects output folder")
-
     #find outliers by th
     def find_hist_outliers(self):
         df = pd.DataFrame(self.val_list, columns=['hist_med'])
@@ -787,10 +777,130 @@ class UI(Ui_MainWindow, QMainWindow):
                     files_list.append(os.path.normpath(root + "/" + file ))
         return files_list
 
+    #seperate images into subfolders
+    def seperate_images(self):
+        self.progressBar.setValue(0)
+        root = tk.Tk()
+        root.withdraw()
+        if not self.Source_path == "":
+            if not self.destination_path =="":
+                path = self.Source_path
+                #Simple seperation without recipe
+                if not self.seperate_checkbox.isChecked():
+                    if not (self.output_X_size.toPlainText() == "" and self.output_Y_size.toPlainText()  == ""):
+                        # Crop and offset
+                        self.write_to_logview("start converting and cropping")
+                        D_path = self.destination_path
+                        file_list = os.listdir(self.Source_path)
+                        self.write_to_logview("ploting example of fixed offset image")
+                        new_width = int(self.output_X_size.toPlainText())
+                        new_height = int(self.output_Y_size.toPlainText())
+                        SourcePath_len = len(self.Source_path)
+                        for root, dirs, files in os.walk(self.Source_path):
+                            for file_ in files:
+                                tmp_str = file_.split('.')
+                                if tmp_str[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
+                                    img = Image.open(root + "\\" + file_)
+                                    w, h = img.size
+                                    destination_Path = os.path.normpath(D_path + root[SourcePath_len:])
+                                    is_dir = os.path.isdir(destination_Path)
+                                    if is_dir == False:
+                                        os.makedirs(destination_Path)
+                                    if self.radioButton.isChecked():
+                                        img1 = self.Image_convert(math.ceil((w - new_width) / 2),
+                                                                  math.ceil((h - new_height) / 2), img)
+                                    else:
+                                        left = math.ceil((w - new_width) / 2)
+                                        top = math.ceil((h - new_height) / 2)
+                                        right = math.ceil((w + new_width) / 2)
+                                        bottom = math.ceil((h + new_height) / 2)
+                                        img1 = img.crop((left, top, right, bottom))
+                                    img1.save(destination_Path + '\\' + file_)
+
+                        else:
+                            self.write_to_logview("staring to convert images")
+
+                            for folder in file_list:
+                                if os.path.isdir(folder):
+                                    curr_f = D_path + '/' + folder
+                                    os.mkdir(curr_f)
+                                    im_list = os.listdir(self.Source_path + '/' + folder)
+                                    for im in im_list:
+                                        format = im.split('.')
+                                        if format[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
+                                            img = Image.open(self.Source_path + '/' + folder + '/' + im)
+                                            w, h = img.size
+                                            if w >= new_width and h >= new_height:
+                                                left = math.ceil((w - new_width) / 2)
+                                                top = math.ceil((h - new_height) / 2)
+                                                right = math.ceil((w + new_width) / 2)
+                                                bottom = math.ceil((h + new_height) / 2)
+                                                if self.radioButton.isChecked():
+                                                    img1 = self.Image_convert(left, top, img)
+                                                else:
+                                                    img1 = img.crop((left, top, right, bottom))
+                                                x = im.split('.')
+                                                new_im_name = ''
+                                                new_im_name = new_im_name.join(x[:-1])
+                                                try:
+                                                    img1.save(curr_f + '/' + new_im_name + '.jpeg')
+                                                except:
+                                                    self.write_to_logview("An exception occurred")
+                            else:
+                                format = folder.split('.')
+                                if format[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
+                                    img = Image.open(self.Source_path + '/' + folder)
+                                    w, h = img.size
+                                    if w >= new_width and h >= new_height:
+                                        left = math.ceil((w - new_width) / 2)
+                                        top = math.ceil((h - new_height) / 2)
+                                        right = math.ceil((w + new_width) / 2)
+                                        bottom = math.ceil((h + new_height) / 2)
+                                        if self.radioButton.isChecked():
+                                            img1 = self.Image_convert(left, top, img)
+                                        img1 = img.crop((left, top, right, bottom))
+                                        new_im_name = ''
+                                        new_im_name = new_im_name.join(format[:-1])
+                                        try:
+                                            img1.save(D_path + '/' + new_im_name + '.jpeg')
+                                        except:
+                                            self.write_to_logview("An exception occurred")
+
+                    else:
+                        messagebox.showinfo(title='Error massage', message='Please fill in the output size')
+                else:
+                    if not (self.offset_x.toPlainText()=="" and self.offset_y.toPlainText()==""):
+                    # Seperate folders
+                        N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
+                        self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
+                        folder_num = 0
+                        # create the first folder0
+                        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+                        os.makedirs(folder_path)
+                        # loop throught all subfolders in path
+                        for root, dirs, files in os.walk(path):
+                            l = len(files)
+                            for i, file in enumerate(files):
+                                self.progressBar.setValue(i / l)
+                                if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+                                    # check if folder is full to max images
+                                    if len(os.listdir(folder_path)) >= N:
+                                        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+                                        os.makedirs(folder_path)
+                                        self.write_to_logview("subfolder: " + str(folder_num) + "ready")
+                                        folder_num += 1
+                                    shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
+                        self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
+                    else:
+                            messagebox.showinfo(title='Error massage', message='Please fill in the offset')
+                    self.write_to_logview("finish convert")
+            else:
+                messagebox.showinfo(title='Error massage', message='destination folder isnt choosen')
+        else:
+            messagebox.showinfo(title='Error massage', message='Source folder isnt choosen')
+
 
 #-----------------------Image proccesing ------------------------- ----------------
-
-
     #padding image for future use
     def padding_image(self,path,padding,width,height):
         # Define the padding values.
@@ -941,7 +1051,6 @@ class UI(Ui_MainWindow, QMainWindow):
             destination_path + '\\' + recipe + '\\' + local_path + '\\ADC\\Surface2Bump.csv'))
 
 #------------------------ GUI updates ----------------------------------
-
     #write logs to logview
     def write_to_logview(self, str1):
         self.Log_listwidget.addItem(str1)
