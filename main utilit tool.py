@@ -39,6 +39,7 @@ class SIFT_Worker(QThread):
         groups = []
         similar_images_dict = {}
         #loading images from path to dict
+        self.no_featur_list =[]
         image_dict = self.load_images_to_dict(self.folder_path)
         self.Print_log_item(" ".join(["start comparing : ", str(len(image_dict)), " files"]), "black")
 
@@ -51,21 +52,21 @@ class SIFT_Worker(QThread):
             #using first image for compare
             img1 = image_list[0]
             img_name = path_list[0]
+            self.Ref_image_path = img_name
             del image_dict[path_list[0]]
 
             #finding similar group
             #t_clock1 = datetime.now()
             similar_group = self.SIFT_Akaze_algo(img1, image_dict, groups, similar_group)
-            #t_clock2 = datetime.now()
-            #d_time = (t_clock2 - t_clock1)
-            #delta = d_time.seconds
-            #self.delta.emit(str(d_time.seconds))
+            for key in self.no_featur_list:
+                if key in image_dict:
+                    del image_dict[key]
+            if similar_group is None:
+                continue
             similar_images_len = len(similar_group[0])
-
             if similar_images_len > 0:
                 # Add the group of similar images dict and geoups
                 similar_images_dict , groups = self.append_group(groups,similar_group,img_name,similar_images_dict)
-
                 #earsing the images that found to be similar
                 for key in similar_group[0][:]:
                     del image_dict[key]
@@ -75,7 +76,8 @@ class SIFT_Worker(QThread):
                 #emit similar group to gui
                 self.found_similar_group.emit(similar_images_dict)
             self.Print_log_item(" ".join(["there is : ", str(len(image_dict)), " images left"]) ,"black")
-
+        similar_images_dict["no_feature"] = self.no_featur_list
+        self.found_similar_group.emit(similar_images_dict)
         self.Print_log_item(" ".join(["Comparison done, found: ", str(len(similar_images_dict)), " groups of similar images"]), "green")
         self.found_similar_group.emit(similar_images_dict)
 
@@ -102,19 +104,28 @@ class SIFT_Worker(QThread):
         correlation_values = []
         akaze = cv2.AKAZE_create()
         th = self.th
+
         croped_image_ref = self.resize_image_arr(image)
         keypoints_ref, descriptors_ref = akaze.detectAndCompute(croped_image_ref, None)
+        if descriptors_ref is None or descriptors_ref.shape[0] == 0:
+            self.Print_log_item("empty Descriptors for: " + self.Ref_image_path,"red")
+            self.no_featur_list.append(self.Ref_image_path)
+            return None
         for img in img_dict.values():
             # Detect keypoints and compute descriptors for reference and target images
             croped_image_tar = self.resize_image_arr(img)
             keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
+            if descriptors_target is None or descriptors_target.shape[0] == 0:
+
+                image_key = self.get_key_by_value(img_dict, img)
+                if image_key not in self.no_featur_list:
+                    self.Print_log_item("empty Descriptors for: " + image_key,"red")
+                    self.no_featur_list.append(image_key)
+                continue  # Skip this iteration and proceed to the next image
 
             # Perform AKAZE matching on the keypoints and descriptors
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-            try:
-                matches = bf.match(descriptors_ref, descriptors_target)
-            except Exception as e:
-                print(e)
+            matches = bf.match(descriptors_ref, descriptors_target)
             # Apply ratio test to filter good matches
             good_matches = [match for match in matches if match.distance < 0.7 * np.max([m.distance for m in matches])]
             num_matches = len(good_matches)
@@ -446,12 +457,18 @@ class UI(Ui_MainWindow, QMainWindow):
 
     def display_comboBox_group(self):
         flag = 0
-        img_list =  list(self.candidates[self.similar_groups.currentText()]['Images'])
+        group = self.similar_groups.currentText()
+        if group == "no_feature":
+            img_list =  list(self.candidates[group])
+            img_str = self.root_folder + "\\" +img_list[0].split("\\")[-1]
+        else:
+            img_list =  list(self.candidates[group]['Images'])
+            img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
         self.Add_items_to_table(img_list,flag)
-        img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
+
         self.curr_im = Image.open(img_str)
         self.draw_ROI()
-        self.sub_window.duplicates2 = list(self.candidates[self.similar_groups.currentText()]["Images"])
+        self.sub_window.duplicates2 = img_list
         self.delete_group.show()
 
     def update_time_in_log(self, t):
