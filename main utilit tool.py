@@ -102,7 +102,16 @@ class SIFT_Worker(QThread):
 
     def SIFT_Akaze_algo(self,image,img_dict,groups,similar_group):
         correlation_values = []
-        akaze = cv2.AKAZE_create()
+        akaze_params = {
+            'descriptor_type': cv2.AKAZE_DESCRIPTOR_MLDB,  # You can adjust this based on your needs
+            'descriptor_size': 0,  # The default value (0) uses the optimal size for the descriptor type
+            'descriptor_channels': image.shape[-1],
+            'threshold': 0.001,  # Adjust this threshold to control the number of keypoints detected
+            'nOctaves': 4,  # Number of octaves in the scale-space pyramid
+            'nOctaveLayers': 4,  # Number of layers per octave
+            'diffusivity': cv2.KAZE_DIFF_PM_G1  # Choose the diffusivity type
+        }
+        akaze = cv2.AKAZE_create(**akaze_params)
         th = self.th
 
         croped_image_ref = self.resize_image_arr(image)
@@ -127,7 +136,9 @@ class SIFT_Worker(QThread):
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
             matches = bf.match(descriptors_ref, descriptors_target)
             # Apply ratio test to filter good matches
-            good_matches = [match for match in matches if match.distance < 0.7 * np.max([m.distance for m in matches])]
+
+
+            good_matches = [match for match in matches if match.distance < 0.5 * np.max([m.distance for m in matches])]
             num_matches = len(good_matches)
             num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
             match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
