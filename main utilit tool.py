@@ -22,18 +22,21 @@ from tkinter import messagebox, filedialog
 import tkinter as tk
 from PIL import Image, ImageDraw
 import time
+from scipy.signal import find_peaks
+from scipy.ndimage import gaussian_filter1d
 
 class SIFT_Worker(QThread):
     comparison_done = pyqtSignal(QListWidgetItem)  # Signal to indicate the comparison is done
     found_similar_group = pyqtSignal(dict)
     precentage = pyqtSignal(float)
     delta = pyqtSignal(str)
-    def __init__(self, folder_path,th,roi):
+    def __init__(self, folder_path,th,roi,no_features_flag):
         super(SIFT_Worker, self).__init__()
         self.folder_path = folder_path
         self.ROI = roi
         self.th = th
         self.results = []
+        self.no_features_flag = no_features_flag
 
     def run(self):
         groups = []
@@ -120,41 +123,43 @@ class SIFT_Worker(QThread):
             self.Print_log_item("empty Descriptors for: " + self.Ref_image_path,"red")
             self.no_featur_list.append(self.Ref_image_path)
             return None
-        for img in img_dict.values():
-            # Detect keypoints and compute descriptors for reference and target images
-            croped_image_tar = self.resize_image_arr(img)
-            keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
-            if descriptors_target is None or descriptors_target.shape[0] == 0:
 
-                image_key = self.get_key_by_value(img_dict, img)
-                if image_key not in self.no_featur_list:
-                    self.Print_log_item("empty Descriptors for: " + image_key,"red")
-                    self.no_featur_list.append(image_key)
-                continue  # Skip this iteration and proceed to the next image
+        if self.no_features_flag == False:
+            for img in img_dict.values():
+                # Detect keypoints and compute descriptors for reference and target images
+                croped_image_tar = self.resize_image_arr(img)
+                keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
+                if descriptors_target is None or descriptors_target.shape[0] == 0:
 
-            # Perform AKAZE matching on the keypoints and descriptors
-            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-            matches = bf.match(descriptors_ref, descriptors_target)
-            # Apply ratio test to filter good matches
+                    image_key = self.get_key_by_value(img_dict, img)
+                    if image_key not in self.no_featur_list:
+                        self.Print_log_item("empty Descriptors for: " + image_key,"red")
+                        self.no_featur_list.append(image_key)
+                    continue  # Skip this iteration and proceed to the next image
 
-
-            good_matches = [match for match in matches if match.distance < 0.5 * np.max([m.distance for m in matches])]
-            num_matches = len(good_matches)
-            num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
-            match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
-            keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
-
-            image_key = self.get_key_by_value(img_dict,img)
-            already_in_group = any(
-                os.path.normpath(os.path.join(self.folder_path, image_key)) in group for group in groups)
-
-            if not already_in_group:
-                # Add similar image to the group
-                if keypoints_matched_ratio > th:
-                    similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_key)))
-                    correlation_values.append(str(keypoints_matched_ratio))
+                # Perform AKAZE matching on the keypoints and descriptors
+                bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                matches = bf.match(descriptors_ref, descriptors_target)
+                # Apply ratio test to filter good matches
 
 
+                good_matches = [match for match in matches if match.distance < 0.5 * np.max([m.distance for m in matches])]
+                num_matches = len(good_matches)
+                num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+                match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+                keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
+
+                image_key = self.get_key_by_value(img_dict,img)
+                already_in_group = any(
+                    os.path.normpath(os.path.join(self.folder_path, image_key)) in group for group in groups)
+
+                if not already_in_group:
+                    # Add similar image to the group
+                    if keypoints_matched_ratio > th:
+                        similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_key)))
+                        correlation_values.append(str(keypoints_matched_ratio))
+
+        time.sleep(0.01)
         res = [similar_group,correlation_values]
         return (res)
 
@@ -162,7 +167,7 @@ class SIFT_Worker(QThread):
         item = QListWidgetItem(str)
         item.setForeground(QColor(color))  # Set the font color to red
         self.comparison_done.emit(item)
-        time.sleep(0.0001)
+        time.sleep(0.01)
         return item
 
     def append_group(self,groups,similar_group,img_name,dict):
@@ -224,7 +229,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalScrollBar.valueChanged.connect(self.Event_scrollbar)
         self.similar_analysis.clicked.connect(self.checkbox_similar_images)
         self.similar_groups.activated.connect(self.display_comboBox_group)
-        self.similar_delete_all.clicked.connect(self.delete_similar_groups)
+        #self.similar_delete_all.clicked.connect(self.delete_similar_groups)
         self.Crop_checkbox.clicked.connect(self.Checkbox_crop)
         self.seperate_checkbox.clicked.connect(self.Checkbox_seperate)
         self.spinBox_ROI.valueChanged.connect(self.draw_ROI)
@@ -246,7 +251,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalSlider_2.hide()
         self.horizontalSlider.hide()
         self.similar_groups.hide()
-        self.similar_delete_all.hide()
+        #self.similar_delete_all.hide()
         self.delete_group.hide()
         self.label_9.hide()
         self.label_3.hide()
@@ -440,38 +445,52 @@ class UI(Ui_MainWindow, QMainWindow):
             hist_list.append(np.histogram(arr[:,:,1], bins=256, range=(0, 256)))
             hist_list.append(np.histogram(arr[:,:,2], bins=256, range=(0, 256)))
         self.plot_widget.clear()
+        peaks_string =""
         RGB_string = ""
         if len(hist_list) == 1:
             colors = ["black"]
+        fill_color = [(255,0,0,100),(0,255,0,100),(0,0,255,100)]
         for i,channel_hist in enumerate(hist_list):
             counts, bins = channel_hist
             max_indices = np.argpartition(channel_hist[0], -2)[-2:]
+            smoothed_hist = gaussian_filter1d(counts, sigma=15)
+            peaks, _ = find_peaks(smoothed_hist, height=100)
             #indx = np.argmax(channel_hist[0])
-            RGB_string = RGB_string + colors[i] + ": Median=" + str(max_indices[0]) + " ,"
+            RGB_string = RGB_string + colors[i] + ": Max peak=" + str(max_indices[0]) + " ,"
+            peaks_string = peaks_string + colors[i] + " Peaks:"
+            for peak in peaks:
+                peaks_string = peaks_string + " " + str(peak) +", "
+
             try:
                 bins_adjusted = bins[:]
-                counts = counts.astype(np.float32)
+                counts = smoothed_hist.astype(np.float32)
                 bins_adjusted = bins_adjusted.astype(np.float32)
-                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150),
+                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=None, brush=fill_color[i],
                                       pen=colors[i])
                 #self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
 
             except Exception as e:
                 print(e)
-
-            self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+            infinite_line = pg.InfiniteLine(pos=max_indices[0], angle=90)
+            pen = pg.mkPen(color=colors[i], style=QtCore.Qt.DashLine)  # Set pen style to DashLine
+            infinite_line.setPen(pen)
+            self.plot_widget.addItem(infinite_line)
 
             #plt.plot(bins[:-1], counts, color=colors[i], label=f"{colors[i].capitalize()}")
             #plt.axvline(x=max_indices[0],linewidth=1, color=colors[i] , linestyle='--')
         self.plot_widget.setLogMode(y=True)
         self.hist_label.setText(RGB_string)
+        self.hist_label_2.setText(peaks_string)
+
 
     def display_comboBox_group(self):
         flag = 0
         group = self.similar_groups.currentText()
         if group == "no_feature":
-            img_list =  list(self.candidates[group])
-            img_str = self.root_folder + "\\" +img_list[0].split("\\")[-1]
+            group_len = len(self.candidates[group])
+            if group_len > 0:
+                img_list =  list(self.candidates[group])
+                img_str = self.root_folder + "\\" +img_list[0].split("\\")[-1]
         else:
             img_list =  list(self.candidates[group]['Images'])
             img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
@@ -489,7 +508,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.progressBar.setValue(int(p))
 
     def update_similar_group(self, similar_dict):
-        self.similar_delete_all.show()
+        #self.similar_delete_all.show()
         self.similar_groups.clear()
         similar_groups = list(similar_dict.keys())
         self.candidates = similar_dict
@@ -639,7 +658,7 @@ class UI(Ui_MainWindow, QMainWindow):
 
     # open Image in plot view from table
     def table_clicked(self):
-
+        self.sub_window.ROI = self.spinBox_ROI.value()
         self.sub_window.r = self.tableWidget.currentRow()
         self.sub_window.c = self.tableWidget.currentColumn()
         self.sub_window.close()
@@ -753,7 +772,8 @@ class UI(Ui_MainWindow, QMainWindow):
 
     def find_similar(self,folder_path):
         # Start a new worker thread for image comparison
-        worker = SIFT_Worker(folder_path,self.doubleSpinBox.value(),self.spinBox_ROI.value())
+        no_features_flag = self.No_features.isChecked()
+        worker = SIFT_Worker(folder_path,self.doubleSpinBox.value(),self.spinBox_ROI.value(),no_features_flag)
         worker.comparison_done.connect(self.update_list_items)
         worker.found_similar_group.connect(self.update_similar_group)
         worker.precentage.connect(self.update_bar)
@@ -1183,8 +1203,8 @@ class UI(Ui_MainWindow, QMainWindow):
         resized_im.save(os.getcwd() + '\\tmp.jpeg')
         pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
         self.label_8.setPixmap(pixmap)
-        x=1
-#Init app
+
+
 if __name__ == "__main__":
     app=QApplication(sys.argv)
     main_win=UI()

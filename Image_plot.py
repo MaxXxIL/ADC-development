@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import  QMainWindow,QTableWidgetItem
 import os
 from PyQt5.QtGui import QPixmap
 from tkinter import messagebox, filedialog
+from PIL import Image, ImageDraw
 
 class Ui_plot_image(object):
     def setupUi(self, plot_image):
@@ -170,17 +171,44 @@ class page(Ui_plot_image, QMainWindow):
             messagebox.showinfo(title='Error massage', message='Image is not exist')
 
     def update_image(self,path):
+        ROI = self.ROI
+        im = Image.open(path)
         geo = self.label.geometry().getRect()
-        pixmap = QPixmap(path)
-        pixmap_resized = pixmap.scaled(geo[3], geo[3])
+        resized_im = im.resize([geo[2], geo[3]])
+        draw = ImageDraw.Draw(resized_im)
+        middle_frame = geo[2] / 2
+        draw.rectangle([middle_frame - ROI / 2,
+                        middle_frame - ROI / 2,
+                        middle_frame + ROI / 2,
+                        middle_frame + ROI / 2],
+                       outline="blue", width=2)
+        resized_im.save(os.getcwd() + '\\tmp.jpeg')
+        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+
+
         self.label_2.setText("Image path: " + path)
         self.curr_file = path
-        self.label.setPixmap(pixmap_resized)
+        self.label.setPixmap(pixmap)
         self.label.setScaledContents(True)
         tmp = path.split("\\")
         self.label_3.setText("Class lable: " + tmp[-2])
         self.label_3.setStyleSheet("color : red")
 
+    def draw_ROI(self):
+        im = self.curr_im
+        ROI = self.spinBox_ROI.value()
+        geo = self.label_8.geometry().getRect()
+        resized_im = im.resize([geo[2], geo[3]])
+        draw = ImageDraw.Draw(resized_im)
+        middle_frame = geo[2] / 2
+        draw.rectangle([middle_frame - ROI / 2,
+                        middle_frame - ROI / 2,
+                        middle_frame + ROI / 2,
+                        middle_frame + ROI / 2],
+                       outline="blue", width=2)
+        resized_im.save(os.getcwd() + '\\tmp.jpeg')
+        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+        self.label_8.setPixmap(pixmap)
 
     def Next_row_image(self):
         r_c = self.table.rowCount()
