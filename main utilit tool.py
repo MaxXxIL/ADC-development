@@ -8,15 +8,16 @@ import sys
 import shutil
 import os
 import hashlib
+
+import numpy
 import pandas as pd
 import pyqtgraph as pg
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore ,QtGui
 from PyQt5.QtGui import QPixmap, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QListWidgetItem ,QVBoxLayout
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot, QMetaObject, pyqtSignal
-from Image_utility_tool import Ui_MainWindow
+from PyQt5.QtCore import QThread, pyqtSignal
 from Image_plot import page
 from tkinter import messagebox, filedialog
 import tkinter as tk
@@ -25,11 +26,309 @@ import time
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(1496, 860)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
+        self.tabWidget.setGeometry(QtCore.QRect(260, 0, 1221, 741))
+        self.tabWidget.setObjectName("tabWidget")
+        self.crop_tab = QtWidgets.QWidget()
+        self.crop_tab.setObjectName("crop_tab")
+        self.label_image = QtWidgets.QLabel(self.crop_tab)
+        self.label_image.setGeometry(QtCore.QRect(0, 180, 500, 500))
+        self.label_image.setText("")
+        self.label_image.setObjectName("label_image")
+        self.label = QtWidgets.QLabel(self.crop_tab)
+        self.label.setGeometry(QtCore.QRect(0, 690, 101, 21))
+        self.label.setObjectName("label")
+        self.Source_image_size = QtWidgets.QLabel(self.crop_tab)
+        self.Source_image_size.setGeometry(QtCore.QRect(110, 690, 171, 21))
+        self.Source_image_size.setObjectName("Source_image_size")
+        self.text2 = QtWidgets.QLabel(self.crop_tab)
+        self.text2.setGeometry(QtCore.QRect(30, 80, 21, 21))
+        self.text2.setObjectName("text2")
+        self.label_2 = QtWidgets.QLabel(self.crop_tab)
+        self.label_2.setGeometry(QtCore.QRect(30, 50, 151, 21))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.label_2.setFont(font)
+        self.label_2.setObjectName("label_2")
+        self.text2_2 = QtWidgets.QLabel(self.crop_tab)
+        self.text2_2.setGeometry(QtCore.QRect(110, 80, 21, 21))
+        self.text2_2.setObjectName("text2_2")
+        self.output_X_size = QtWidgets.QTextEdit(self.crop_tab)
+        self.output_X_size.setGeometry(QtCore.QRect(50, 80, 51, 31))
+        self.output_X_size.setObjectName("output_X_size")
+        self.output_Y_size = QtWidgets.QTextEdit(self.crop_tab)
+        self.output_Y_size.setGeometry(QtCore.QRect(130, 80, 51, 31))
+        self.output_Y_size.setObjectName("output_Y_size")
+        self.radioButton = QtWidgets.QRadioButton(self.crop_tab)
+        self.radioButton.setGeometry(QtCore.QRect(230, 50, 91, 21))
+        self.radioButton.setObjectName("radioButton")
+        self.offset_y = QtWidgets.QTextEdit(self.crop_tab)
+        self.offset_y.setGeometry(QtCore.QRect(300, 80, 51, 31))
+        self.offset_y.setObjectName("offset_y")
+        self.y_offset_text = QtWidgets.QLabel(self.crop_tab)
+        self.y_offset_text.setGeometry(QtCore.QRect(280, 80, 31, 20))
+        self.y_offset_text.setObjectName("y_offset_text")
+        self.offset_x = QtWidgets.QTextEdit(self.crop_tab)
+        self.offset_x.setGeometry(QtCore.QRect(220, 80, 51, 31))
+        self.offset_x.setObjectName("offset_x")
+        self.x_offset_text = QtWidgets.QLabel(self.crop_tab)
+        self.x_offset_text.setGeometry(QtCore.QRect(200, 80, 21, 21))
+        self.x_offset_text.setObjectName("x_offset_text")
+        self.Star_seperate = QtWidgets.QPushButton(self.crop_tab)
+        self.Star_seperate.setGeometry(QtCore.QRect(30, 150, 141, 23))
+        self.Star_seperate.setObjectName("Star_seperate")
+        self.Recipe_seperate = QtWidgets.QCheckBox(self.crop_tab)
+        self.Recipe_seperate.setGeometry(QtCore.QRect(30, 110, 131, 17))
+        self.Recipe_seperate.setObjectName("Recipe_seperate")
+        self.label_3 = QtWidgets.QLabel(self.crop_tab)
+        self.label_3.setGeometry(QtCore.QRect(30, 50, 151, 21))
+        self.label_3.setObjectName("label_3")
+        self.plainTextEdit = QtWidgets.QPlainTextEdit(self.crop_tab)
+        self.plainTextEdit.setGeometry(QtCore.QRect(30, 80, 101, 21))
+        self.plainTextEdit.setObjectName("plainTextEdit")
+        self.Crop_checkbox = QtWidgets.QCheckBox(self.crop_tab)
+        self.Crop_checkbox.setEnabled(True)
+        self.Crop_checkbox.setGeometry(QtCore.QRect(30, 20, 101, 18))
+        self.Crop_checkbox.setChecked(True)
+        self.Crop_checkbox.setObjectName("Crop_checkbox")
+        self.seperate_checkbox = QtWidgets.QCheckBox(self.crop_tab)
+        self.seperate_checkbox.setGeometry(QtCore.QRect(150, 20, 141, 18))
+        self.seperate_checkbox.setObjectName("seperate_checkbox")
+        self.label_11 = QtWidgets.QLabel(self.crop_tab)
+        self.label_11.setGeometry(QtCore.QRect(830, 140, 141, 16))
+        font = QtGui.QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_11.setFont(font)
+        self.label_11.setObjectName("label_11")
+        self.hist_label_2 = QtWidgets.QLabel(self.crop_tab)
+        self.hist_label_2.setGeometry(QtCore.QRect(680, 650, 421, 31))
+        self.hist_label_2.setText("")
+        self.hist_label_2.setObjectName("hist_label_2")
+        self.widget = QtWidgets.QWidget(self.crop_tab)
+        self.widget.setGeometry(QtCore.QRect(680, 170, 450, 450))
+        self.widget.setObjectName("widget")
+        self.hist_label = QtWidgets.QLabel(self.crop_tab)
+        self.hist_label.setGeometry(QtCore.QRect(680, 630, 421, 31))
+        self.hist_label.setText("")
+        self.hist_label.setObjectName("hist_label")
+        self.seperate_oclass = QtWidgets.QCheckBox(self.crop_tab)
+        self.seperate_oclass.setGeometry(QtCore.QRect(310, 20, 141, 18))
+        self.seperate_oclass.setObjectName("seperate_oclass")
+        self.tabWidget.addTab(self.crop_tab, "")
+        self.image_extractor_tab = QtWidgets.QWidget()
+        self.image_extractor_tab.setObjectName("image_extractor_tab")
+        self.label_5 = QtWidgets.QLabel(self.image_extractor_tab)
+        self.label_5.setGeometry(QtCore.QRect(150, 10, 600, 600))
+        self.label_5.setText("")
+        self.label_5.setObjectName("label_5")
+        self.tabWidget.addTab(self.image_extractor_tab, "")
+        self.duplicate_tab = QtWidgets.QWidget()
+        self.duplicate_tab.setObjectName("duplicate_tab")
+        self.seek_identical = QtWidgets.QPushButton(self.duplicate_tab)
+        self.seek_identical.setGeometry(QtCore.QRect(20, 30, 171, 31))
+        self.seek_identical.setObjectName("seek_identical")
+        self.tableWidget = QtWidgets.QTableWidget(self.duplicate_tab)
+        self.tableWidget.setGeometry(QtCore.QRect(20, 70, 1181, 641))
+        self.tableWidget.setObjectName("tableWidget")
+        self.tableWidget.setColumnCount(2)
+        self.tableWidget.setRowCount(0)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(1, item)
+        self.horizontalSlider = QtWidgets.QSlider(self.duplicate_tab)
+        self.horizontalSlider.setGeometry(QtCore.QRect(800, 110, 191, 22))
+        self.horizontalSlider.setSingleStep(1)
+        self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
+        self.horizontalSlider.setObjectName("horizontalSlider")
+        self.hist_analysis = QtWidgets.QCheckBox(self.duplicate_tab)
+        self.hist_analysis.setGeometry(QtCore.QRect(800, 20, 141, 18))
+        self.hist_analysis.setObjectName("hist_analysis")
+        self.hist_min = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_min.setGeometry(QtCore.QRect(800, 80, 51, 16))
+        self.hist_min.setObjectName("hist_min")
+        self.hist_max = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_max.setGeometry(QtCore.QRect(940, 80, 51, 16))
+        self.hist_max.setObjectName("hist_max")
+        self.hist_value = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_value.setGeometry(QtCore.QRect(1010, 110, 51, 16))
+        self.hist_value.setObjectName("hist_value")
+        self.horizontalSlider_2 = QtWidgets.QSlider(self.duplicate_tab)
+        self.horizontalSlider_2.setGeometry(QtCore.QRect(800, 140, 191, 22))
+        self.horizontalSlider_2.setProperty("value", 99)
+        self.horizontalSlider_2.setOrientation(QtCore.Qt.Horizontal)
+        self.horizontalSlider_2.setObjectName("horizontalSlider_2")
+        self.hist_lower = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_lower.setGeometry(QtCore.QRect(740, 110, 41, 20))
+        self.hist_lower.setObjectName("hist_lower")
+        self.hist_upper = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_upper.setGeometry(QtCore.QRect(740, 140, 41, 20))
+        self.hist_upper.setObjectName("hist_upper")
+        self.hist_value_2 = QtWidgets.QLabel(self.duplicate_tab)
+        self.hist_value_2.setGeometry(QtCore.QRect(1010, 140, 51, 16))
+        self.hist_value_2.setObjectName("hist_value_2")
+        self.label_7 = QtWidgets.QLabel(self.duplicate_tab)
+        self.label_7.setGeometry(QtCore.QRect(720, 220, 501, 431))
+        self.label_7.setText("")
+        self.label_7.setObjectName("label_7")
+        self.similar_analysis = QtWidgets.QCheckBox(self.duplicate_tab)
+        self.similar_analysis.setGeometry(QtCore.QRect(800, 50, 131, 20))
+        self.similar_analysis.setObjectName("similar_analysis")
+        self.similar_groups = QtWidgets.QComboBox(self.duplicate_tab)
+        self.similar_groups.setGeometry(QtCore.QRect(740, 80, 411, 21))
+        self.similar_groups.setObjectName("similar_groups")
+        self.label_8 = QtWidgets.QLabel(self.duplicate_tab)
+        self.label_8.setGeometry(QtCore.QRect(760, 250, 400, 400))
+        self.label_8.setText("")
+        self.label_8.setObjectName("label_8")
+        self.label_9 = QtWidgets.QLabel(self.duplicate_tab)
+        self.label_9.setGeometry(QtCore.QRect(950, 20, 58, 16))
+        self.label_9.setObjectName("label_9")
+        self.doubleSpinBox = QtWidgets.QDoubleSpinBox(self.duplicate_tab)
+        self.doubleSpinBox.setGeometry(QtCore.QRect(950, 40, 62, 22))
+        self.doubleSpinBox.setDecimals(2)
+        self.doubleSpinBox.setMinimum(0.1)
+        self.doubleSpinBox.setMaximum(1.0)
+        self.doubleSpinBox.setSingleStep(0.01)
+        self.doubleSpinBox.setProperty("value", 0.5)
+        self.doubleSpinBox.setObjectName("doubleSpinBox")
+        self.spinBox_ROI = QtWidgets.QSpinBox(self.duplicate_tab)
+        self.spinBox_ROI.setGeometry(QtCore.QRect(1030, 40, 51, 22))
+        self.spinBox_ROI.setMinimum(50)
+        self.spinBox_ROI.setMaximum(350)
+        self.spinBox_ROI.setSingleStep(10)
+        self.spinBox_ROI.setObjectName("spinBox_ROI")
+        self.label_12 = QtWidgets.QLabel(self.duplicate_tab)
+        self.label_12.setGeometry(QtCore.QRect(1040, 20, 19, 16))
+        self.label_12.setObjectName("label_12")
+        self.delete_group = QtWidgets.QPushButton(self.duplicate_tab)
+        self.delete_group.setGeometry(QtCore.QRect(1120, 120, 75, 21))
+        self.delete_group.setObjectName("delete_group")
+        self.No_features = QtWidgets.QCheckBox(self.duplicate_tab)
+        self.No_features.setGeometry(QtCore.QRect(1090, 20, 121, 20))
+        self.No_features.setObjectName("No_features")
+        self.tabWidget.addTab(self.duplicate_tab, "")
+        self.Source_TextEdit = QtWidgets.QPlainTextEdit(self.centralwidget)
+        self.Source_TextEdit.setGeometry(QtCore.QRect(10, 40, 221, 31))
+        self.Source_TextEdit.setPlainText("")
+        self.Source_TextEdit.setObjectName("Source_TextEdit")
+        self.label_10 = QtWidgets.QLabel(self.centralwidget)
+        self.label_10.setGeometry(QtCore.QRect(10, 150, 47, 14))
+        self.label_10.setObjectName("label_10")
+        self.source_button = QtWidgets.QPushButton(self.centralwidget)
+        self.source_button.setGeometry(QtCore.QRect(10, 10, 141, 23))
+        self.source_button.setObjectName("source_button")
+        self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
+        self.progressBar.setGeometry(QtCore.QRect(10, 170, 201, 23))
+        self.progressBar.setProperty("value", 0)
+        self.progressBar.setObjectName("progressBar")
+        self.label_4 = QtWidgets.QLabel(self.centralwidget)
+        self.label_4.setGeometry(QtCore.QRect(10, 200, 101, 21))
+        self.label_4.setObjectName("label_4")
+        self.Log_listwidget = QtWidgets.QListWidget(self.centralwidget)
+        self.Log_listwidget.setGeometry(QtCore.QRect(10, 220, 211, 581))
+        self.Log_listwidget.setObjectName("Log_listwidget")
+        self.destination_TextEdit = QtWidgets.QPlainTextEdit(self.centralwidget)
+        self.destination_TextEdit.setGeometry(QtCore.QRect(10, 110, 221, 31))
+        self.destination_TextEdit.setPlainText("")
+        self.destination_TextEdit.setObjectName("destination_TextEdit")
+        self.destination_button = QtWidgets.QPushButton(self.centralwidget)
+        self.destination_button.setGeometry(QtCore.QRect(10, 80, 171, 23))
+        self.destination_button.setObjectName("destination_button")
+        self.Extractor_next = QtWidgets.QPushButton(self.centralwidget)
+        self.Extractor_next.setGeometry(QtCore.QRect(790, 780, 75, 23))
+        self.Extractor_next.setObjectName("Extractor_next")
+        self.label_6 = QtWidgets.QLabel(self.centralwidget)
+        self.label_6.setGeometry(QtCore.QRect(406, 750, 321, 20))
+        self.label_6.setObjectName("label_6")
+        self.Extractor_prev = QtWidgets.QPushButton(self.centralwidget)
+        self.Extractor_prev.setGeometry(QtCore.QRect(710, 780, 75, 23))
+        self.Extractor_prev.setObjectName("Extractor_prev")
+        self.horizontalScrollBar = QtWidgets.QScrollBar(self.centralwidget)
+        self.horizontalScrollBar.setGeometry(QtCore.QRect(410, 780, 281, 16))
+        self.horizontalScrollBar.setMinimum(1)
+        self.horizontalScrollBar.setMaximum(15)
+        self.horizontalScrollBar.setProperty("value", 15)
+        self.horizontalScrollBar.setOrientation(QtCore.Qt.Horizontal)
+        self.horizontalScrollBar.setObjectName("horizontalScrollBar")
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1496, 22))
+        self.menubar.setObjectName("menubar")
+        self.menuImage_Editor = QtWidgets.QMenu(self.menubar)
+        self.menuImage_Editor.setObjectName("menuImage_Editor")
+        MainWindow.setMenuBar(self.menubar)
+        self.menuImage_Editor.addSeparator()
+        self.menubar.addAction(self.menuImage_Editor.menuAction())
+
+        self.retranslateUi(MainWindow)
+        self.tabWidget.setCurrentIndex(0)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.label.setText(_translate("MainWindow", "Original image size"))
+        self.Source_image_size.setText(_translate("MainWindow", "X:              Y:"))
+        self.text2.setText(_translate("MainWindow", "X: "))
+        self.label_2.setText(_translate("MainWindow", "Output image size"))
+        self.text2_2.setText(_translate("MainWindow", "Y:"))
+        self.radioButton.setText(_translate("MainWindow", "Add offset"))
+        self.y_offset_text.setText(_translate("MainWindow", "Y:"))
+        self.x_offset_text.setText(_translate("MainWindow", "X: "))
+        self.Star_seperate.setText(_translate("MainWindow", "Start Task"))
+        self.Recipe_seperate.setText(_translate("MainWindow", "separate by recipe"))
+        self.label_3.setText(_translate("MainWindow", "Number of images per folder"))
+        self.Crop_checkbox.setText(_translate("MainWindow", "Crop Images"))
+        self.seperate_checkbox.setText(_translate("MainWindow", "Seperate to sub folder"))
+        self.label_11.setText(_translate("MainWindow", "Image Histogram"))
+        self.seperate_oclass.setText(_translate("MainWindow", "Seperate by  Oclass"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.crop_tab), _translate("MainWindow", "Image crop & converter"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.image_extractor_tab), _translate("MainWindow", "Image extractor"))
+        self.seek_identical.setText(_translate("MainWindow", "Start searching"))
+        item = self.tableWidget.horizontalHeaderItem(0)
+        item.setText(_translate("MainWindow", "path 1"))
+        item = self.tableWidget.horizontalHeaderItem(1)
+        item.setText(_translate("MainWindow", "path 2"))
+        self.hist_analysis.setText(_translate("MainWindow", "Enable histogram view"))
+        self.hist_min.setText(_translate("MainWindow", "min"))
+        self.hist_max.setText(_translate("MainWindow", "max"))
+        self.hist_value.setText(_translate("MainWindow", "value"))
+        self.hist_lower.setText(_translate("MainWindow", "lower th"))
+        self.hist_upper.setText(_translate("MainWindow", "upper th"))
+        self.hist_value_2.setText(_translate("MainWindow", "value"))
+        self.similar_analysis.setText(_translate("MainWindow", "Find similiar images"))
+        self.label_9.setText(_translate("MainWindow", "Thresh hold"))
+        self.label_12.setText(_translate("MainWindow", "ROI"))
+        self.delete_group.setText(_translate("MainWindow", "delete group"))
+        self.No_features.setText(_translate("MainWindow", "No features search"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.duplicate_tab), _translate("MainWindow", "identical image finder"))
+        self.label_10.setText(_translate("MainWindow", "Loading"))
+        self.source_button.setText(_translate("MainWindow", "Select source directory"))
+        self.label_4.setText(_translate("MainWindow", "Online Log view"))
+        self.destination_button.setText(_translate("MainWindow", "Select destination directory"))
+        self.Extractor_next.setText(_translate("MainWindow", "Next Image"))
+        self.label_6.setText(_translate("MainWindow", "0.1                                      Zoom                                    10"))
+        self.Extractor_prev.setText(_translate("MainWindow", "Prev Image"))
+        self.menuImage_Editor.setTitle(_translate("MainWindow", "Image_Editor"))
+
 class SIFT_Worker(QThread):
     comparison_done = pyqtSignal(QListWidgetItem)  # Signal to indicate the comparison is done
     found_similar_group = pyqtSignal(dict)
     precentage = pyqtSignal(float)
     delta = pyqtSignal(str)
+
     def __init__(self, folder_path,th,roi,no_features_flag):
         super(SIFT_Worker, self).__init__()
         self.folder_path = folder_path
@@ -109,7 +408,7 @@ class SIFT_Worker(QThread):
             'descriptor_type': cv2.AKAZE_DESCRIPTOR_MLDB,  # You can adjust this based on your needs
             'descriptor_size': 0,  # The default value (0) uses the optimal size for the descriptor type
             'descriptor_channels': image.shape[-1],
-            'threshold': 0.001,  # Adjust this threshold to control the number of keypoints detected
+            'threshold': 0.0001,  # Adjust this threshold to control the number of keypoints detected
             'nOctaves': 4,  # Number of octaves in the scale-space pyramid
             'nOctaveLayers': 4,  # Number of layers per octave
             'diffusivity': cv2.KAZE_DIFF_PM_G1  # Choose the diffusivity type
@@ -119,6 +418,12 @@ class SIFT_Worker(QThread):
 
         croped_image_ref = self.resize_image_arr(image)
         keypoints_ref, descriptors_ref = akaze.detectAndCompute(croped_image_ref, None)
+        image_with_keypoints = cv2.drawKeypoints(croped_image_ref, keypoints_ref, None)
+
+        # Display the image with keypoints
+        #cv2.imshow('Image with Keypoints', image_with_keypoints)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
         if descriptors_ref is None or descriptors_ref.shape[0] == 0:
             self.Print_log_item("empty Descriptors for: " + self.Ref_image_path,"red")
             self.no_featur_list.append(self.Ref_image_path)
@@ -197,6 +502,19 @@ class SIFT_Worker(QThread):
         y2 = mid_y + self.ROI
         image_arr = arr[x1:x2, y1:y2]
         return image_arr
+
+class Image_processing_Worker(QThread):
+    folder_copy = pyqtSignal(str)
+
+    def __init__(self, source_path,destination_path,crop_window,state):
+        super(Image_processing_Worker, self).__init__()
+        self.source_path = source_path
+        self.destination_path = destination_path
+        self.crop_window = crop_window
+        self.state = state
+
+    def run(self):
+        x=1
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
         super().__init__()
@@ -217,21 +535,20 @@ class UI(Ui_MainWindow, QMainWindow):
         self.delete_group.clicked.connect(self.delete_similar_group)
         self.source_button.clicked.connect(self.select_folder)
         self.destination_button.clicked.connect(self.select_folder)
-        #self.commandLinkButton.clicked.connect(self.image_convert_and_crop)
         self.Star_seperate.clicked.connect(self.seperate_images)
         self.seek_identical.clicked.connect(self.start_analysis)
         self.tableWidget.clicked.connect(self.table_clicked)
-        self.Extractor_next.clicked.connect(self.next_file_in_list)
-        self.Extractor_prev.clicked.connect(self.prev_file_in_list)
+        self.Extractor_next.clicked.connect(self.toggle_image_in_list)
+        self.Extractor_prev.clicked.connect(self.toggle_image_in_list)
         self.hist_analysis.clicked.connect(self.checkbox_histogram_view)
         self.horizontalSlider.valueChanged.connect(self.Scrollbar_lower_th_display)
         self.horizontalSlider_2.valueChanged.connect(self.Scrollbar_upper_th_display)
         self.horizontalScrollBar.valueChanged.connect(self.Event_scrollbar)
         self.similar_analysis.clicked.connect(self.checkbox_similar_images)
         self.similar_groups.activated.connect(self.display_comboBox_group)
-        #self.similar_delete_all.clicked.connect(self.delete_similar_groups)
-        self.Crop_checkbox.clicked.connect(self.Checkbox_crop)
-        self.seperate_checkbox.clicked.connect(self.Checkbox_seperate)
+        self.Crop_checkbox.clicked.connect(self.checkbox_manager)
+        self.seperate_oclass.clicked.connect(self.checkbox_manager)
+        self.seperate_checkbox.clicked.connect(self.checkbox_manager)
         self.spinBox_ROI.valueChanged.connect(self.draw_ROI)
         self.init_appereance()
 
@@ -251,7 +568,6 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalSlider_2.hide()
         self.horizontalSlider.hide()
         self.similar_groups.hide()
-        #self.similar_delete_all.hide()
         self.delete_group.hide()
         self.label_9.hide()
         self.label_3.hide()
@@ -263,8 +579,64 @@ class UI(Ui_MainWindow, QMainWindow):
         self.label_12.hide()
         self.Source_path=""
         self.destination_path=""
+        self.press_mouse_pos = None
+        self.line_hist_flag = 0
 
 #-----------------------------------------checkbox-----------------------------------------------------
+    def checkbox_manager(self):
+        sender = self.sender().objectName()
+        if sender == "Crop_checkbox":
+            self.seperate_checkbox.setChecked(0)
+            self.seperate_oclass.setChecked(0)
+            self.plainTextEdit.hide()
+            self.Recipe_seperate.hide()
+            self.label_2.show()
+            self.radioButton.show()
+            self.text2.show()
+            self.output_X_size.show()
+            self.output_Y_size.show()
+            self.text2_2.show()
+        elif sender == "seperate_oclass":
+
+            self.Crop_checkbox.setChecked(0)
+            self.seperate_checkbox.setChecked(0)
+            self.plainTextEdit.hide()
+            self.Recipe_seperate.hide()
+            self.label_2.hide()
+            self.radioButton.hide()
+            self.text2.hide()
+            self.output_X_size.hide()
+            self.output_Y_size.hide()
+            self.text2_2.hide()
+            self.checkBox_set_offset()
+            self.radioButton.setChecked(0)
+        elif sender == "seperate_checkbox":
+            self.Crop_checkbox.setChecked(0)
+            self.seperate_oclass.setChecked(0)
+            self.plainTextEdit.show()
+            self.Recipe_seperate.show()
+            self.label_2.hide()
+            self.radioButton.hide()
+            self.text2.hide()
+            self.output_X_size.hide()
+            self.output_Y_size.hide()
+            self.text2_2.show()
+            self.checkBox_set_offset()
+            self.radioButton.setChecked(0)
+        elif sender == "radioButton":
+            if self.radioButton.isChecked():
+                self.offset_y.show()
+                self.offset_x.show()
+                self.x_offset_text.show()
+                self.y_offset_text.show()
+            else:
+                self.offset_y.hide()
+                self.offset_x.hide()
+                self.x_offset_text.hide()
+                self.y_offset_text.hide()
+
+
+
     def checkbox_similar_images(self):
         if self.similar_analysis.isChecked():
             self.similar_groups.show()
@@ -281,7 +653,6 @@ class UI(Ui_MainWindow, QMainWindow):
             self.hist_upper.hide()
             self.hist_lower.hide()
             self.horizontalSlider_2.hide()
-
             self.label_9.show()
             self.label_12.show()
             self.doubleSpinBox.show()
@@ -328,7 +699,7 @@ class UI(Ui_MainWindow, QMainWindow):
 
     # show offset objects
     def checkBox_set_offset(self):
-        if self.radioButton.isChecked():
+        if (self.radioButton.isChecked() and  self.Crop_checkbox.isChecked()) :
             self.offset_y.show()
             self.offset_x.show()
             self.x_offset_text.show()
@@ -345,6 +716,9 @@ class UI(Ui_MainWindow, QMainWindow):
     def Checkbox_seperate(self):
         self.Crop_seperate_toggle(self.Crop_checkbox.isChecked())
 
+    def Checkbox_seperate_oclass(self):
+        self.Crop_seperate_toggle(self.seperate_oclass.isChecked())
+
 #---------------------------------------------Push buttons-------------------------------------------------------------
     def select_folder(self):
         root = tk.Tk()
@@ -352,76 +726,66 @@ class UI(Ui_MainWindow, QMainWindow):
         folder_path = filedialog.askdirectory(title="select folder")
         sender = self.sender().objectName()
         self.root_folder = folder_path
+
         if sender == "source_button":
             self.Source_path = folder_path
             self.Source_TextEdit.setPlainText(folder_path)
             self.files_list = self.get_image_list_from_root(self.Source_path)
-            temp_img = self.find_first_image(self.Source_path)
-            im = Image.open(temp_img)
-            self.image_hist_plot(im)
-            if self.tabWidget.currentWidget().objectName() == 'crop_tab':
-                pixmap = QPixmap(temp_img)
-                self.Source_image_size.setText('X: ' + str(im.width) + '       Y:' + str(im.height))
-                geo = self.label_image.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_image.setPixmap(pixmap)
-            elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-                self.f_object = [self.files_list, 0]
-                self.current_image_path = self.files_list[0]
-                self.image_changing(self.current_image_path)
-                pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                geo = self.label_5.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_5.setPixmap(pixmap)
-            else:
-                #get ROI
-                self.curr_im = im
-                self.draw_ROI()
+            self.f_object = [self.files_list, 0]
+            self.current_image_path = self.find_first_image(self.Source_path)
+            self.Update_image()
 
         else:
             self.destination_TextEdit.setPlainText(folder_path)
             self.destination_path = folder_path
 
-
-    #show next image in list
-    def next_file_in_list(self):
-
+    def toggle_image_in_list(self):
         list = self.f_object[0]
-        file_indx = self.f_object[1] + 1
+        l = len(list)
         try:
-            self.current_image_path = list[file_indx]
-            self.f_object[1] = file_indx
-            l = len(list)
-            self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
-            if l - 1 == file_indx :
+            sender = self.sender().objectName()
+        except:
+            sender = "Extractor_next"
+
+        if sender == "Extractor_next":
+            tmp_str = "next"
+            self.Extractor_prev.show()
+            file_indx = self.f_object[1] + 1
+            if l - 1 == file_indx:
                 self.Extractor_next.hide()
+        else:
+            tmp_str = "prev"
+            self.Extractor_next.show()
+            file_indx = self.f_object[1] - 1
+            if file_indx == 0:
+                self.Extractor_prev.hide()
+        self.f_object[1] = file_indx
+        self.current_image_path = list[file_indx]
+        self.temp_img = self.current_image_path
+        self.write_to_logview( tmp_str + "image " + str(file_indx) + "/" + str(len(list)))
+        self.Update_image()
+
+
+    def Update_image(self):
+        try:
             self.image_changing(self.current_image_path)
+
             im = Image.open(self.current_image_path)
             self.image_hist_plot(im)
             pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-            geo = self.label_5.geometry().getRect()
-            pixmap = pixmap.scaled(geo[-1], geo[-1])
-            self.label_5.setPixmap(pixmap)
+            if self.tabWidget.currentWidget().objectName() == 'crop_tab':
+                geo = self.label_image.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_image.setPixmap(pixmap)
+            else:
+                geo = self.label_5.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_5.setPixmap(pixmap)
+
         except:
             QMessageBox.about(self, "info massage", "no more images")
 
     # show next image in list
-    def prev_file_in_list(self):
-        self.Extractor_next.show()
-        list = self.f_object[0]
-        file_indx = self.f_object[1] -1
-        self.current_image_path = list[file_indx]
-        self.f_object[1] = file_indx
-        l = len(list)
-        self.write_to_logview("next image " + str(file_indx) + "/" + str(l))
-        if file_indx == 0:
-            self.Extractor_next.hide()
-        self.image_changing(self.current_image_path)
-        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-        geo = self.label_5.geometry().getRect()
-        pixmap = pixmap.scaled(geo[-1], geo[-1])
-        self.label_5.setPixmap(pixmap)
-
     def delete_similar_group(self):
         xx= self.similar_groups.currentText()
         for img in list(self.candidates[xx]['Images']):
@@ -436,52 +800,52 @@ class UI(Ui_MainWindow, QMainWindow):
     def image_hist_plot(self,im):
         bands = len(im.getbands())
         arr = np.array(im,dtype=object)
-        colors = ["red","green","blue"]
         hist_list = []
         if bands == 1:
-            hist_list.append(np.histogram(arr, bins=256, range=(0, 256)))
+            hist_list.append(np.histogram(arr, bins=256, range=(0, 255)))
         else:
             hist_list.append(np.histogram(arr[:,:,0], bins=256, range=(0, 256)))
             hist_list.append(np.histogram(arr[:,:,1], bins=256, range=(0, 256)))
             hist_list.append(np.histogram(arr[:,:,2], bins=256, range=(0, 256)))
         self.plot_widget.clear()
+        self.pygraph_plot(hist_list)
+
+    def pygraph_plot(self, hist_list):
+        self.plot_widget.clear()
+        colors = ["red", "green", "blue"]
         peaks_string =""
         RGB_string = ""
         if len(hist_list) == 1:
-            colors = ["black"]
+            colors = ["white"]
         fill_color = [(255,0,0,100),(0,255,0,100),(0,0,255,100)]
         for i,channel_hist in enumerate(hist_list):
             counts, bins = channel_hist
             max_indices = np.argpartition(channel_hist[0], -2)[-2:]
-            smoothed_hist = gaussian_filter1d(counts, sigma=15)
-            peaks, _ = find_peaks(smoothed_hist, height=100)
-            #indx = np.argmax(channel_hist[0])
+            if self.line_hist_flag == 1:
+                hist = counts
+            else:
+                hist = gaussian_filter1d(counts, sigma=5)
+            peaks, _ = find_peaks(hist, height=100)
             RGB_string = RGB_string + colors[i] + ": Max peak=" + str(max_indices[0]) + " ,"
             peaks_string = peaks_string + colors[i] + " Peaks:"
             for peak in peaks:
                 peaks_string = peaks_string + " " + str(peak) +", "
 
-            try:
-                bins_adjusted = bins[:]
-                counts = smoothed_hist.astype(np.float32)
-                bins_adjusted = bins_adjusted.astype(np.float32)
-                self.plot_widget.plot(bins_adjusted, counts, stepMode=True, fillLevel=None, brush=fill_color[i],
-                                      pen=colors[i])
-                #self.plot_widget.addItem(pg.InfiniteLine(pos=max_indices[0], angle=90, pen=colors[i]))
+            bins_adjusted = bins[:]
+            hist = hist.astype(np.float32)
+            bins_adjusted = bins_adjusted.astype(np.float32)
+            self.plot_widget.plot(bins_adjusted[1:], hist[1:], stepMode=True, fillLevel=None, brush=fill_color[i],
+                                    pen=colors[i], linewidth=10)
 
-            except Exception as e:
-                print(e)
+
+
             infinite_line = pg.InfiniteLine(pos=max_indices[0], angle=90)
             pen = pg.mkPen(color=colors[i], style=QtCore.Qt.DashLine)  # Set pen style to DashLine
             infinite_line.setPen(pen)
             self.plot_widget.addItem(infinite_line)
 
-            #plt.plot(bins[:-1], counts, color=colors[i], label=f"{colors[i].capitalize()}")
-            #plt.axvline(x=max_indices[0],linewidth=1, color=colors[i] , linestyle='--')
-        self.plot_widget.setLogMode(y=True)
         self.hist_label.setText(RGB_string)
         self.hist_label_2.setText(peaks_string)
-
 
     def display_comboBox_group(self):
         flag = 0
@@ -508,7 +872,6 @@ class UI(Ui_MainWindow, QMainWindow):
         self.progressBar.setValue(int(p))
 
     def update_similar_group(self, similar_dict):
-        #self.similar_delete_all.show()
         self.similar_groups.clear()
         similar_groups = list(similar_dict.keys())
         self.candidates = similar_dict
@@ -542,11 +905,10 @@ class UI(Ui_MainWindow, QMainWindow):
         draw = ImageDraw.Draw(i)
         middle_frame = i.size[0] / 2
         draw.rectangle(
-            [middle_frame - middle_frame / 10, middle_frame - middle_frame / 10, middle_frame + middle_frame / 10,
-             middle_frame + middle_frame / 10],
-            outline="red", width=6)
+            [middle_frame - middle_frame / 5, middle_frame - middle_frame / 5, middle_frame + middle_frame / 5,
+             middle_frame + middle_frame / 5],
+            outline="red", width=2)
         i.save(os.getcwd() + '\\tmp.jpeg')
-
 
     def Crop_seperate_toggle(self,crop):
         sender = self.sender().objectName()
@@ -555,19 +917,21 @@ class UI(Ui_MainWindow, QMainWindow):
                 case = 1
             else:
                 case = 0
+        elif sender == 'seperate_oclass':
+            case = 2
         else:
             if not crop:
-                case = 0
-            else:
                 case = 1
+            else:
+                case = 0
         self.hide_show_prop(case)
 
-
     def hide_show_prop(self,case):
-        if case:
+        if case == 1:
             self.label_3.hide()
-            self.seperate_checkbox.setChecked(0)
-            self.Crop_checkbox.setChecked(1)
+            self.seperate_checkbox.setChecked(1)
+            self.Crop_checkbox.setChecked(0)
+            self.seperate_oclass.setChecked(0)
             self.plainTextEdit.hide()
             self.Recipe_seperate.hide()
             self.label_2.show()
@@ -577,10 +941,24 @@ class UI(Ui_MainWindow, QMainWindow):
             self.output_Y_size.show()
             self.text2_2.show()
 
-        else:
-            self.label_3.show()
-            self.seperate_checkbox.setChecked(1)
+        elif case == 2:
+            self.label_3.hide()
+            self.seperate_checkbox.setChecked(0)
             self.Crop_checkbox.setChecked(0)
+            self.plainTextEdit.hide()
+            self.Recipe_seperate.hide()
+            self.label_2.hide()
+            self.radioButton.hide()
+            self.text2.hide()
+            self.output_X_size.hide()
+            self.output_Y_size.hide()
+            self.text2_2.hide()
+
+        else:
+            self.seperate_oclass.setChecked(0)
+            self.label_3.show()
+            self.seperate_checkbox.setChecked(0)
+            self.Crop_checkbox.setChecked(1)
             self.plainTextEdit.show()
             self.Recipe_seperate.show()
             self.label_2.hide()
@@ -596,20 +974,18 @@ class UI(Ui_MainWindow, QMainWindow):
             self.offset_y.hide()
 
 #-------------------------Events---------------------------
-
-
     #scroll zoom in Image
     def wheelEvent(self, event):
-        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            scrollDistance = event.angleDelta().y()
-            numDegrees = event.angleDelta() / 8
-            numSteps = numDegrees / 15
-            if scrollDistance > 0:
-                zoom_indx = -1*numSteps.manhattanLength()
-            else:
-                zoom_indx = numSteps.manhattanLength()
-            s_indx = self.horizontalScrollBar.value()
-            self.horizontalScrollBar.setValue(s_indx + zoom_indx)
+
+        scrollDistance = event.angleDelta().y()
+        numDegrees = event.angleDelta() / 8
+        numSteps = numDegrees / 15
+        if scrollDistance > 0:
+            zoom_indx = -1*numSteps.manhattanLength()
+        else:
+            zoom_indx = numSteps.manhattanLength()
+        s_indx = self.horizontalScrollBar.value()
+        self.horizontalScrollBar.setValue(s_indx + zoom_indx)
 
     # display Vertical line -Lower th
     def Scrollbar_lower_th_display(self):
@@ -632,20 +1008,28 @@ class UI(Ui_MainWindow, QMainWindow):
                 self.current_image_path = list[file_indx]
                 self.image_changing(self.current_image_path)
                 pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-                geo = self.label_5.geometry().getRect()
-                pixmap = pixmap.scaled(geo[-1], geo[-1])
-                self.label_5.setPixmap(pixmap)
+
+
+                if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+                    geo = self.label_5.geometry().getRect()
+                    pixmap = pixmap.scaled(geo[-1], geo[-1])
+                    self.label_5.setPixmap(pixmap)
+                else:
+                    geo = self.label_image.geometry().getRect()
+                    pixmap = pixmap.scaled(geo[-1], geo[-1])
+                    self.label_image.setPixmap(pixmap)
+
 
     # mouse clicked on image to cropp by center
     def mousePressEvent(self, event):
         if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
-            x = event.x()  - 2
-            y = event.y() - 43
+            x = event.x()  - 412
+            y = event.y() - 53
             if not (x < 0 or y < 0 or x > 600 or y > 600):
                 if self.destination_TextEdit.toPlainText() == "":
                     messagebox.showinfo(title='Error massage', message='please select destination folder')
                 else:
-                    img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,event)
+                    img2 =  self.center_and_crop_image(self.label_5.geometry().getRect(),self.current_image_path,x,y)
                     if not img2 == None:
                         tmp_str = self.current_image_path.split('\\')
                         img_name = tmp_str[-1]
@@ -654,8 +1038,101 @@ class UI(Ui_MainWindow, QMainWindow):
                             img_name = tmp[0] + '_' + '.jpeg'
                         img2.save(self.destination_path + '\\_' + img_name)
                         self.write_to_logview(img_name + ' image was saved')
-                        self.next_file_in_list()
+                        self.toggle_image_in_list()
+        elif self.tabWidget.currentWidget().objectName() == 'crop_tab':
+            if self.press_mouse_pos == None:
+                x = event.x()  - 260
+                y = event.y() - 220
+                if not (x < 0 or y < 0 or x > 500 or y > 500):
+                    geo = self.label_image.geometry()
+                    self.press_mouse_pos = (x,y)
 
+    def mouseReleaseEvent(self, event):
+        self.plot_line_hist(event)
+
+
+    def plot_line_hist(self,event):
+        if not self.press_mouse_pos == None:
+            hist_list = []
+            x = event.x() - 262
+            y = event.y() - 220
+            if not (x < 0 or y < 0 or x > 500 or y > 500):
+                image = Image.open(self.temp_img)
+                im_dim = image.size
+                geo = self.label_image.geometry().getRect()
+                factor_x = geo[2] / im_dim[0]
+                factor_y = geo[3] / im_dim[1]
+                im_arr = cv2.imread(self.temp_img)
+                dim = im_arr.shape[2]
+                for i in range(dim):
+                    tmp_arr = im_arr[:, :, i]
+                    line_pixels = self.extract_line_pixels(tmp_arr, (
+                    int(self.press_mouse_pos[0] / factor_x), int(self.press_mouse_pos[1] / factor_y), int(x / factor_x),
+                    int(y / factor_y)))
+                    line_pixels = numpy.array(line_pixels)
+                    hist_list.append((line_pixels, np.arange(0, len(line_pixels) + 1)))
+                self.line_hist_flag = 1
+                hist_list = numpy.asarray(hist_list)
+                self.pygraph_plot(hist_list)
+                self.draw_line((self.press_mouse_pos[0], self.press_mouse_pos[1]), (x, y))
+            self.press_mouse_pos = None
+
+    def draw_line(self,start,end):
+        image = Image.open(self.temp_img)
+        dim = image.size
+        geo = self.label_image.geometry().getRect()
+        factor_x = geo[2]/dim[0]
+        factor_y = geo[3]/dim[1]
+        draw = ImageDraw.Draw(image)
+
+        # Draw a red line on the image
+        line_color = "gray"
+
+        line_width = 2
+        draw.line([(start[0]/factor_x,start[1]/factor_y),(end[0]/factor_x,end[1]/factor_y)], fill="red", width=line_width)
+        image.save(os.getcwd() + '\\tmp.jpeg')
+        pixmap=QPixmap(os.getcwd() + '\\tmp.jpeg')
+
+        pixmap = pixmap.scaled(geo[-1], geo[-1])
+        self.label_image.setPixmap(pixmap)
+
+    def extract_line_pixels(self,image,pos):
+        line_points = self.bresenham_line(pos[0], pos[1], pos[2], pos[3])
+        extracted_values=[]
+        for point in line_points:
+            extracted_values.append(image[point[1], point[0]])
+        return extracted_values
+
+    def bresenham_line(self,x0, y0, x1, y1):
+        steep = abs(y1 - y0) > abs(x1 - x0)
+        if steep:
+            x0, y0 = y0, x0
+            x1, y1 = y1, x1
+
+        swapped = False
+        if x0 > x1:
+            x0, x1 = x1, x0
+            y0, y1 = y1, y0
+            swapped = True
+
+        dx = x1 - x0
+        dy = abs(y1 - y0)
+        error = dx // 2
+        ystep = 1 if y0 < y1 else -1
+        y = y0
+
+        points = []
+        for x in range(x0, x1 + 1):
+            coord = (y, x) if steep else (x, y)
+            points.append(coord)
+            error -= dy
+            if error < 0:
+                y += ystep
+                error += dx
+
+        if swapped:
+            points.reverse()
+        return points
     # open Image in plot view from table
     def table_clicked(self):
         self.sub_window.ROI = self.spinBox_ROI.value()
@@ -688,7 +1165,6 @@ class UI(Ui_MainWindow, QMainWindow):
             self.similar_groups.clear()
             self.Log_listwidget.clear()
             self.write_to_logview("loading images before performing analysis")
-            #self.label_8.clear()
             self.tableWidget.clear()
             self.tableWidget.setRowCount(0)
 
@@ -855,11 +1331,12 @@ class UI(Ui_MainWindow, QMainWindow):
         self.progressBar.setValue(0)
         root = tk.Tk()
         root.withdraw()
+        indx=1
         if not self.Source_path == "":
             if not self.destination_path =="":
-                path = self.Source_path
+                path = os.path.normpath(self.Source_path)
                 #Simple seperation without recipe
-                if not self.seperate_checkbox.isChecked():
+                if self.Crop_checkbox.isChecked():
                     if not (self.output_X_size.toPlainText() == "" and self.output_Y_size.toPlainText()  == ""):
                         # Crop and offset
                         self.write_to_logview("start converting and cropping")
@@ -871,6 +1348,8 @@ class UI(Ui_MainWindow, QMainWindow):
                         SourcePath_len = len(self.Source_path)
                         for root, dirs, files in os.walk(self.Source_path):
                             for file_ in files:
+                                if file_=="99620.58098.c.125650875.1--a54b55e3b7.jpeg":
+                                    x=1
                                 tmp_str = file_.split('.')
                                 if tmp_str[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
                                     img = Image.open(root + "\\" + file_)
@@ -888,60 +1367,16 @@ class UI(Ui_MainWindow, QMainWindow):
                                         right = math.ceil((w + new_width) / 2)
                                         bottom = math.ceil((h + new_height) / 2)
                                         img1 = img.crop((left, top, right, bottom))
+                                        file_name = file_.split(".")
+
                                     img1.save(destination_Path + '\\' + file_)
-
-                        else:
-                            self.write_to_logview("staring to convert images")
-
-                            for folder in file_list:
-                                if os.path.isdir(folder):
-                                    curr_f = D_path + '/' + folder
-                                    os.mkdir(curr_f)
-                                    im_list = os.listdir(self.Source_path + '/' + folder)
-                                    for im in im_list:
-                                        format = im.split('.')
-                                        if format[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
-                                            img = Image.open(self.Source_path + '/' + folder + '/' + im)
-                                            w, h = img.size
-                                            if w >= new_width and h >= new_height:
-                                                left = math.ceil((w - new_width) / 2)
-                                                top = math.ceil((h - new_height) / 2)
-                                                right = math.ceil((w + new_width) / 2)
-                                                bottom = math.ceil((h + new_height) / 2)
-                                                if self.radioButton.isChecked():
-                                                    img1 = self.Image_convert(left, top, img)
-                                                else:
-                                                    img1 = img.crop((left, top, right, bottom))
-                                                x = im.split('.')
-                                                new_im_name = ''
-                                                new_im_name = new_im_name.join(x[:-1])
-                                                try:
-                                                    img1.save(curr_f + '/' + new_im_name + '.jpeg')
-                                                except:
-                                                    self.write_to_logview("An exception occurred")
-                            else:
-                                format = folder.split('.')
-                                if format[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
-                                    img = Image.open(self.Source_path + '/' + folder)
-                                    w, h = img.size
-                                    if w >= new_width and h >= new_height:
-                                        left = math.ceil((w - new_width) / 2)
-                                        top = math.ceil((h - new_height) / 2)
-                                        right = math.ceil((w + new_width) / 2)
-                                        bottom = math.ceil((h + new_height) / 2)
-                                        if self.radioButton.isChecked():
-                                            img1 = self.Image_convert(left, top, img)
-                                        img1 = img.crop((left, top, right, bottom))
-                                        new_im_name = ''
-                                        new_im_name = new_im_name.join(format[:-1])
-                                        try:
-                                            img1.save(D_path + '/' + new_im_name + '.jpeg')
-                                        except:
-                                            self.write_to_logview("An exception occurred")
+                                    self.write_to_logview("Image: " + file_ + "number " + str(indx) + " converted")
+                                indx = indx +1
 
                     else:
                         messagebox.showinfo(title='Error massage', message='Please fill in the output size')
-                else:
+
+                if self.seperate_checkbox.isChecked():
                     if not (self.offset_x.toPlainText()=="" and self.offset_y.toPlainText()==""):
                     # Seperate folders
                         N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
@@ -967,11 +1402,29 @@ class UI(Ui_MainWindow, QMainWindow):
                     else:
                             messagebox.showinfo(title='Error massage', message='Please fill in the offset')
                     self.write_to_logview("finish convert")
+                if self.seperate_oclass.isChecked():
+                    for root, dirs, files in os.walk(path):
+                        if "ADC" in dirs:
+                            df = pd.read_csv(root + '\\ADC\\Surface2Bump.csv')
+                            l=len(df)
+                            for i in range(l):
+                                image_name = df["ImageName"][i]
+                                image_bin = df[" OClass"][i]
+                                image_x = df["ImageX"][i]
+                                image_y = df["ImageY"][i]
+                                if not os.path.exists(os.path.normpath(self.destination_path + '\\' + str(image_bin))):
+                                    os.makedirs(os.path.normpath(self.destination_path + '\\' + str(image_bin)))
+
+                                src =(root + '\\' + image_name)
+                                tmp_img = self.center_and_crop_image((1000,1000),src,image_x,image_y)
+                                dst =os.path.normpath(self.destination_path + '\\' + str(image_bin) + "\\" + image_name)
+                                tmp_img.save(dst)
             else:
                 messagebox.showinfo(title='Error massage', message='destination folder isnt choosen')
         else:
             messagebox.showinfo(title='Error massage', message='Source folder isnt choosen')
 
+        self.write_to_logview("finish converting images")
 
 #-----------------------Image proccesing ------------------------- ----------------
     #padding image for future use
@@ -990,11 +1443,11 @@ class UI(Ui_MainWindow, QMainWindow):
         padded_image.paste(image, box=(left, top))
         return padded_image
 
-    def center_and_crop_image(self,img_rect,cuur_path,event):
-        x = event.x() - img_rect[0] - 2
-        y = event.y() - img_rect[1] - 43
-        if not (x < 0 or y < 0 or x > 600 or y > 600):
-            img_dim = Image.open(cuur_path).size
+    def center_and_crop_image(self,img_rect,cuur_path,x,y):
+
+        img_dim = Image.open(cuur_path).size
+        if (not(x < 0 or y < 0 or x > 600 or y > 600) and (not self.seperate_oclass.isChecked())):
+
             valid_y = (img_dim[0] -img_dim[1])/2
             factor = img_dim[0] / img_rect[3]
             if (self.scale == 1 and (y > valid_y/factor and y < (img_rect[3] - valid_y/factor))) or self.scale != 1 :
@@ -1008,14 +1461,22 @@ class UI(Ui_MainWindow, QMainWindow):
                 img = Image.open(cuur_path)
                 img1 = Image.new(img.mode, (img_dim[0] + abs(int(offset_x)), img_dim[1] + abs(int(offset_y))))
                 img1.paste(img, (0 + offset_x, 0 + offset_y))
-                img2 = img1.crop((0, 0, img_dim[0], img_dim[1]))
-            return img2
+                cropped_image = img1.crop((0, 0, img_dim[0], img_dim[1]))
+        elif self.seperate_oclass.isChecked():
+            img = Image.open(cuur_path)
+            img1 = Image.new(img.mode, (img_dim[0], img_dim[1]) )
+            offset_x = int(img_dim[0] // 2 -x)
+            offset_y = int(img_dim[1] // 2 -y)
+            img1.paste(img, (0 + offset_x, 0 + offset_y))
+
+            # Crop the image
+            cropped_image = img1.crop((0, 0, img_dim[0], img_dim[1]))
+        return cropped_image
 
     # convert images
     def image_convert_and_crop(self):
         try:
             self.write_to_logview("start converting and cropping")
-
             D_path = filedialog.askdirectory(title="select output folder")
             self.destination_listWidget.addItem("Start convertion")
             file_list=os.listdir(self.Source_path)
@@ -1042,7 +1503,6 @@ class UI(Ui_MainWindow, QMainWindow):
                             bottom = math.ceil((h + new_height) / 2)
                             img1 = img.crop((left, top, right, bottom))
                         img1.save(destination_Path +'\\' + file_)
-
             else:
                 self.write_to_logview("staring to convert images")
 
@@ -1133,29 +1593,28 @@ class UI(Ui_MainWindow, QMainWindow):
     def Add_items_to_table(self, duplicate_paths,flag):
         self.tableWidget.setRowCount(0)
         self.tableWidget.clear()
-        #self.sub_window.duplicates2 =[]
-        if flag == 1:
-            len_dup = [len(x) for x in duplicate_paths]
-            self.tableWidget.setRowCount(len(duplicate_paths))
-            self.tableWidget.setColumnCount(max(len_dup))
-            header=[]
-            for i in range(max(len_dup)):
-                self.tableWidget.setColumnWidth(i, 450)
-                header.append("path " + str(i))
-            self.tableWidget.setHorizontalHeaderLabels(header)
-            for n, row_ in enumerate(duplicate_paths):
-                for m, str_tmp in enumerate(row_):
-                    str_tmp = QtWidgets.QTableWidgetItem(row_[m])
-                    self.tableWidget.setItem(n,m,str_tmp)
-        else:
-            self.tableWidget.setRowCount(len(duplicate_paths))
-            self.tableWidget.setColumnCount(1)
-            self.tableWidget.setColumnWidth(0, 700)
-            for n, path in enumerate(duplicate_paths):
-                str_tmp = QtWidgets.QTableWidgetItem(path)
-                self.tableWidget.setItem(n,0,str_tmp)
-                #self.sub_window.duplicates2.append(path)
-        self.tableWidget.setSortingEnabled(1)
+        if len(duplicate_paths)>0:
+            if flag == 1:
+                len_dup = [len(x) for x in duplicate_paths]
+                self.tableWidget.setRowCount(len(duplicate_paths))
+                self.tableWidget.setColumnCount(max(len_dup))
+                header=[]
+                for i in range(max(len_dup)):
+                    self.tableWidget.setColumnWidth(i, 450)
+                    header.append("path " + str(i))
+                self.tableWidget.setHorizontalHeaderLabels(header)
+                for n, row_ in enumerate(duplicate_paths):
+                    for m, str_tmp in enumerate(row_):
+                        str_tmp = QtWidgets.QTableWidgetItem(row_[m])
+                        self.tableWidget.setItem(n,m,str_tmp)
+            else:
+                self.tableWidget.setRowCount(len(duplicate_paths))
+                self.tableWidget.setColumnCount(1)
+                self.tableWidget.setColumnWidth(0, 700)
+                for n, path in enumerate(duplicate_paths):
+                    str_tmp = QtWidgets.QTableWidgetItem(path)
+                    self.tableWidget.setItem(n,0,str_tmp)
+            self.tableWidget.setSortingEnabled(1)
 
     # display histogram on label
     def Display_hist(self,arr,th_low,th_high):

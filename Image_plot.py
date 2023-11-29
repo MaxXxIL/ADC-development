@@ -232,7 +232,6 @@ class page(Ui_plot_image, QMainWindow):
         else:
             messagebox.showinfo(title='Error massage', message='end of the image list')
 
-
     def Prev_row_image(self):
         r_c = self.table.rowCount()
         if self.r == None and self.c == None:
@@ -261,6 +260,7 @@ class page(Ui_plot_image, QMainWindow):
         if self.r == None and self.c == None:
             self.c = self.table.currentColumn()
             self.r = self.table.currentRow()
+
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
