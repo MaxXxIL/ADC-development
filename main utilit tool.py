@@ -1,6 +1,7 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
+import cupy as cp
 import cv2
 from datetime import datetime
 import math
@@ -29,7 +30,7 @@ from scipy.ndimage import gaussian_filter1d
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1496, 860)
+        MainWindow.resize(1496, 858)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
@@ -101,7 +102,7 @@ class Ui_MainWindow(object):
         self.seperate_checkbox.setGeometry(QtCore.QRect(150, 20, 141, 18))
         self.seperate_checkbox.setObjectName("seperate_checkbox")
         self.label_11 = QtWidgets.QLabel(self.crop_tab)
-        self.label_11.setGeometry(QtCore.QRect(830, 140, 141, 16))
+        self.label_11.setGeometry(QtCore.QRect(770, 80, 141, 20))
         font = QtGui.QFont()
         font.setPointSize(11)
         font.setBold(True)
@@ -109,14 +110,14 @@ class Ui_MainWindow(object):
         self.label_11.setFont(font)
         self.label_11.setObjectName("label_11")
         self.hist_label_2 = QtWidgets.QLabel(self.crop_tab)
-        self.hist_label_2.setGeometry(QtCore.QRect(680, 650, 421, 31))
+        self.hist_label_2.setGeometry(QtCore.QRect(550, 150, 591, 31))
         self.hist_label_2.setText("")
         self.hist_label_2.setObjectName("hist_label_2")
         self.widget = QtWidgets.QWidget(self.crop_tab)
-        self.widget.setGeometry(QtCore.QRect(680, 170, 450, 450))
+        self.widget.setGeometry(QtCore.QRect(539, 170, 600, 511))
         self.widget.setObjectName("widget")
         self.hist_label = QtWidgets.QLabel(self.crop_tab)
-        self.hist_label.setGeometry(QtCore.QRect(680, 630, 421, 31))
+        self.hist_label.setGeometry(QtCore.QRect(550, 130, 591, 31))
         self.hist_label.setText("")
         self.hist_label.setObjectName("hist_label")
         self.seperate_oclass = QtWidgets.QCheckBox(self.crop_tab)
@@ -195,7 +196,7 @@ class Ui_MainWindow(object):
         self.doubleSpinBox = QtWidgets.QDoubleSpinBox(self.duplicate_tab)
         self.doubleSpinBox.setGeometry(QtCore.QRect(950, 40, 62, 22))
         self.doubleSpinBox.setDecimals(2)
-        self.doubleSpinBox.setMinimum(0.1)
+        self.doubleSpinBox.setMinimum(0.01)
         self.doubleSpinBox.setMaximum(1.0)
         self.doubleSpinBox.setSingleStep(0.01)
         self.doubleSpinBox.setProperty("value", 0.5)
@@ -212,6 +213,10 @@ class Ui_MainWindow(object):
         self.delete_group = QtWidgets.QPushButton(self.duplicate_tab)
         self.delete_group.setGeometry(QtCore.QRect(1120, 120, 75, 21))
         self.delete_group.setObjectName("delete_group")
+        self.Save_uniqe = QtWidgets.QPushButton(self.duplicate_tab)
+        self.Save_uniqe.setEnabled(True)
+        self.Save_uniqe.setGeometry(QtCore.QRect(1120, 150, 75, 21))
+        self.Save_uniqe.setObjectName("Save_uniqe")
         self.No_features = QtWidgets.QCheckBox(self.duplicate_tab)
         self.No_features.setGeometry(QtCore.QRect(1090, 20, 121, 20))
         self.No_features.setObjectName("No_features")
@@ -254,9 +259,9 @@ class Ui_MainWindow(object):
         self.Extractor_prev.setObjectName("Extractor_prev")
         self.horizontalScrollBar = QtWidgets.QScrollBar(self.centralwidget)
         self.horizontalScrollBar.setGeometry(QtCore.QRect(410, 780, 281, 16))
-        self.horizontalScrollBar.setMinimum(1)
-        self.horizontalScrollBar.setMaximum(15)
-        self.horizontalScrollBar.setProperty("value", 15)
+        self.horizontalScrollBar.setMinimum(2)
+        self.horizontalScrollBar.setMaximum(10)
+        self.horizontalScrollBar.setProperty("value", 10)
         self.horizontalScrollBar.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalScrollBar.setObjectName("horizontalScrollBar")
         MainWindow.setCentralWidget(self.centralwidget)
@@ -271,7 +276,8 @@ class Ui_MainWindow(object):
         MainWindow.setMenuBar(self.menubar)
         self.menuImage_Editor.addSeparator()
         self.menubar.addAction(self.menuImage_Editor.menuAction())
-
+        self.curr_im = None
+        self.Zoom_indx = 15
         self.retranslateUi(MainWindow)
         self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -328,6 +334,7 @@ class SIFT_Worker(QThread):
     found_similar_group = pyqtSignal(dict)
     precentage = pyqtSignal(float)
     delta = pyqtSignal(str)
+    Images_path_l = pyqtSignal(list)
 
     def __init__(self, folder_path,th,roi,no_features_flag):
         super(SIFT_Worker, self).__init__()
@@ -339,49 +346,152 @@ class SIFT_Worker(QThread):
 
     def run(self):
         groups = []
+        correlation_values = []
+        global image_dict_path
         similar_images_dict = {}
         #loading images from path to dict
         self.no_featur_list =[]
-        image_dict = self.load_images_to_dict(self.folder_path)
-        self.Print_log_item(" ".join(["start comparing : ", str(len(image_dict)), " files"]), "black")
+        self.image_dict = self.load_images_to_dict(self.folder_path)
+        self.Images_path_l.emit(list(self.image_dict.keys()))
+        self.Print_log_item(" ".join(["start comparing : ", str(len(self.image_dict)), " files"]), "black")
+        th = self.th
+        Features_images_dict = self.Calc_Sift_Descriptor(self.image_dict)
 
-        while len(image_dict) > 1:
-            similar_group = []
-            #importing images and path from dict
-            path_list = list(image_dict.keys())
-            image_list = list(image_dict.values())
+        try:
+            while len(Features_images_dict) > 1:
+                similar_group = []
+                #importing images and path from dict
+                path_list = list(Features_images_dict.keys())
+                image_des_list = list(Features_images_dict.values())
 
-            #using first image for compare
-            img1 = image_list[0]
-            img_name = path_list[0]
-            self.Ref_image_path = img_name
-            del image_dict[path_list[0]]
+                #using first image for compare
+                [key_points_ref,descriptor_ref] = image_des_list[0]
+                img_name = path_list[0]
+                del Features_images_dict[path_list[0]]
 
-            #finding similar group
-            #t_clock1 = datetime.now()
-            similar_group = self.SIFT_Akaze_algo(img1, image_dict, groups, similar_group)
-            for key in self.no_featur_list:
-                if key in image_dict:
-                    del image_dict[key]
-            if similar_group is None:
-                continue
-            similar_images_len = len(similar_group[0])
-            if similar_images_len > 0:
-                # Add the group of similar images dict and geoups
-                similar_images_dict , groups = self.append_group(groups,similar_group,img_name,similar_images_dict)
-                #earsing the images that found to be similar
-                for key in similar_group[0][:]:
-                    del image_dict[key]
-                file_name = path_list[0].split('\\')
-                self.Print_log_item(" ".join(["Found: ", str(similar_images_len), " images that are similar to file", file_name[-1]]),"blue")
 
-                #emit similar group to gui
-                self.found_similar_group.emit(similar_images_dict)
-            self.Print_log_item(" ".join(["there is : ", str(len(image_dict)), " images left"]) ,"black")
+                if descriptor_ref is None or descriptor_ref.shape[0] == 0:
+                    self.Print_log_item("empty Descriptors for: " + img_name, "red")
+                    self.no_featur_list.append(img_name)
+                    time.sleep(0.001)
+                    return None
+
+                if self.no_features_flag == False:
+                    indx=0
+                    for img in Features_images_dict.keys():
+                        indx=indx+1
+                        # Detect keypoints and compute descriptors for reference and target images
+
+                        [keypoints_target,descriptor_target] = Features_images_dict[img]
+                        if descriptor_target is None or descriptor_target.shape[0] == 0:
+                            if img not in self.no_featur_list:
+                                self.Print_log_item("empty Descriptors for: " + img_name, "red")
+                                self.no_featur_list.append(img)
+                            continue  # Skip this iteration and proceed to the next image
+
+                        # Perform AKAZE matching on the keypoints and descriptors
+                        #bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                        #matches = bf.match(descriptor_ref, descriptor_target)
+                        # Apply ratio test to filter good matches
+                        Flag=2
+                        if Flag==1:
+                            des1_gpu = cv2.cuda_GpuMat()
+                            des1_gpu.upload(descriptor_ref)
+                            bf_matcher = cv2.cuda.DescriptorMatcher_createBFMatcher(cv2.NORM_L2)
+                            # Convert descriptors to GPU mat
+                            des2_gpu = cv2.cuda_GpuMat()
+                            des2_gpu.upload(descriptor_target)
+                            # Perform matching
+                            matches = bf_matcher.match(des1_gpu, des2_gpu)
+                        elif Flag==2:
+                            des1_gpu = cp.asarray(descriptor_ref)
+                            des2_gpu = cp.asarray(descriptor_target)
+
+                            # Perform matching using CuPy
+                            distances = cp.sqrt(cp.sum((des1_gpu[:, None] - des2_gpu[None, :]) ** 2, axis=2))
+                            indices = cp.argmin(distances, axis=1)
+
+                            # Convert distances and indices back to CPU
+                            distances_cpu = distances.get()
+                            indices_cpu = indices.get()
+
+                            # Create DMatch objects
+                            matches = [cv2.DMatch(i, indices_cpu[i], float(distances_cpu[i, indices_cpu[i]])) for i in
+                                       range(len(indices_cpu))]
+
+                        else:
+                            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                            matches = bf.match(descriptor_ref, descriptor_target)
+
+
+                        good_matches = [match for match in matches if match.distance < 0.8 * np.max([m.distance for m in matches])]
+                        num_matches = len(good_matches)
+                        num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+                        match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+                        keypoints_matched_ratio = len(good_matches) / len(key_points_ref) if len(key_points_ref) > 0 else 0.0
+
+                        already_in_group = any(
+                            os.path.normpath(os.path.join(self.folder_path, img)) in group for group in groups)
+
+                        if not already_in_group:
+                            # Add similar image to the group
+                            if keypoints_matched_ratio > th:
+                                similar_group.append(img)
+                                #correlation_values.append(str(keypoints_matched_ratio))
+                        print(indx)
+
+                time.sleep(0.001)
+                if similar_group is None:
+                    continue
+                for img in similar_group:
+                    if img in Features_images_dict.keys():
+                        del Features_images_dict[img]
+
+                similar_images_len = len(similar_group)
+                if similar_images_len > 0:
+                    # Add the group of similar images dict and geoups
+                    similar_images_dict[img_name] = similar_group
+
+                    #file_name = path_list[0].split('\\')
+                    self.Print_log_item(" ".join(["Found: ", str(similar_images_len), " images that are similar to file", img_name]),"blue")
+
+                    #emit similar group to gui
+                    self.found_similar_group.emit(similar_images_dict)
+                self.Print_log_item(" ".join(["there is : ", str(len(Features_images_dict.keys())), " images left"]) ,"black")
+                time.sleep(0.001)
+        except FileNotFoundError as e:
+              self.Print_log_item(["An error occurred:", str(e)], "red")
+        time.sleep(0.001)
         similar_images_dict["no_feature"] = self.no_featur_list
         self.found_similar_group.emit(similar_images_dict)
         self.Print_log_item(" ".join(["Comparison done, found: ", str(len(similar_images_dict)), " groups of similar images"]), "green")
         self.found_similar_group.emit(similar_images_dict)
+
+    def Calc_Sift_Descriptor(self,im_dict):
+        Sift_im_dict={}
+        for image in im_dict.keys():
+            croped_image_ref = self.resize_image_arr(im_dict[image])
+            akaze_params = {
+                'descriptor_type': cv2.AKAZE_DESCRIPTOR_MLDB,  # You can adjust this based on your needs
+                'descriptor_size': 0,  # The default value (0) uses the optimal size for the descriptor type
+                'descriptor_channels': croped_image_ref.shape[-1],
+                'threshold': 0.0001,  # Adjust this threshold to control the number of keypoints detected
+                'nOctaves': 4,  # Number of octaves in the scale-space pyramid
+                'nOctaveLayers': 4,  # Number of layers per octave
+                'diffusivity': cv2.KAZE_DIFF_PM_G1  # Choose the diffusivity type
+            }
+            akaze = cv2.AKAZE_create(**akaze_params)
+            keypoints, descriptors = akaze.detectAndCompute(croped_image_ref, None)
+            norms = np.linalg.norm(descriptors, axis=1)
+
+            # Sort the descriptors based on their norms in descending order
+            sorted_indices = np.argsort(norms)[::-1]
+
+            # Select the top-k most important descriptors
+            k = 50  # Specify the number of important descriptors to select
+            important_descriptors = descriptors[sorted_indices[:k]]
+            Sift_im_dict[image] = [keypoints, important_descriptors]
+        return Sift_im_dict
 
     def load_images_to_dict(self,root_folder):
         image_dict = {}
@@ -415,65 +525,75 @@ class SIFT_Worker(QThread):
         }
         akaze = cv2.AKAZE_create(**akaze_params)
         th = self.th
+        try:
+            croped_image_ref = self.resize_image_arr(image)
+            keypoints_ref, descriptors_ref = akaze.detectAndCompute(croped_image_ref, None)
+            #image_with_keypoints = cv2.drawKeypoints(croped_image_ref, keypoints_ref, None)
 
-        croped_image_ref = self.resize_image_arr(image)
-        keypoints_ref, descriptors_ref = akaze.detectAndCompute(croped_image_ref, None)
-        image_with_keypoints = cv2.drawKeypoints(croped_image_ref, keypoints_ref, None)
+            # Display the image with keypoints
 
-        # Display the image with keypoints
-        #cv2.imshow('Image with Keypoints', image_with_keypoints)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-        if descriptors_ref is None or descriptors_ref.shape[0] == 0:
-            self.Print_log_item("empty Descriptors for: " + self.Ref_image_path,"red")
-            self.no_featur_list.append(self.Ref_image_path)
-            return None
+            if descriptors_ref is None or descriptors_ref.shape[0] == 0:
+                self.Print_log_item("empty Descriptors for: " + self.Ref_image_path,"red")
+                self.no_featur_list.append(self.Ref_image_path)
+                return None
 
-        if self.no_features_flag == False:
-            for img in img_dict.values():
-                # Detect keypoints and compute descriptors for reference and target images
-                croped_image_tar = self.resize_image_arr(img)
-                keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
-                if descriptors_target is None or descriptors_target.shape[0] == 0:
+            if self.no_features_flag == False:
+                for img in img_dict.keys():
+                    # Detect keypoints and compute descriptors for reference and target images
+                    croped_image_tar = self.resize_image_arr(img)
+                    keypoints_target, descriptors_target = akaze.detectAndCompute(croped_image_tar, None)
+                    if descriptors_target is None or descriptors_target.shape[0] == 0:
 
-                    image_key = self.get_key_by_value(img_dict, img)
-                    if image_key not in self.no_featur_list:
-                        self.Print_log_item("empty Descriptors for: " + image_key,"red")
-                        self.no_featur_list.append(image_key)
-                    continue  # Skip this iteration and proceed to the next image
+                        image_key = self.get_key_by_value(img_dict, img)
+                        if image_key not in self.no_featur_list:
+                            self.Print_log_item("empty Descriptors for: " + image_key,"red")
+                            self.no_featur_list.append(image_key)
+                        continue  # Skip this iteration and proceed to the next image
 
-                # Perform AKAZE matching on the keypoints and descriptors
-                bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-                matches = bf.match(descriptors_ref, descriptors_target)
-                # Apply ratio test to filter good matches
+                    # Perform AKAZE matching on the keypoints and descriptors
+                    #bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                    #matches = bf.match(descriptors_ref, descriptors_target)
+                    # Apply ratio test to filter good matches
+                    # Create BF Matcher
+                    bf_matcher = cv2.cuda.DescriptorMatcher_createBFMatcher(cv2.NORM_L2)
 
+                    # Convert descriptors to GPU mat
+                    des1_gpu = cv2.cuda_GpuMat()
+                    des2_gpu = cv2.cuda_GpuMat()
+                    des1_gpu.upload(descriptors_ref)
+                    des2_gpu.upload(descriptors_target)
 
-                good_matches = [match for match in matches if match.distance < 0.5 * np.max([m.distance for m in matches])]
-                num_matches = len(good_matches)
-                num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
-                match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
-                keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
+                    # Perform matching
+                    matches = bf_matcher.match(des1_gpu, des2_gpu)
 
-                image_key = self.get_key_by_value(img_dict,img)
-                already_in_group = any(
-                    os.path.normpath(os.path.join(self.folder_path, image_key)) in group for group in groups)
+                    good_matches = [match for match in matches if match.distance < 0.5 * np.max([m.distance for m in matches])]
+                    num_matches = len(good_matches)
+                    num_correct_matches = sum(1 for match in good_matches if match.distance < 0.5)
+                    match_ratio = num_correct_matches / num_matches if num_matches > 0 else 0.0
+                    keypoints_matched_ratio = len(good_matches) / len(keypoints_ref) if len(keypoints_ref) > 0 else 0.0
 
-                if not already_in_group:
-                    # Add similar image to the group
-                    if keypoints_matched_ratio > th:
-                        similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_key)))
-                        correlation_values.append(str(keypoints_matched_ratio))
+                    image_key = self.get_key_by_value(img_dict,img)
+                    already_in_group = any(
+                        os.path.normpath(os.path.join(self.folder_path, image_key)) in group for group in groups)
 
-        time.sleep(0.01)
-        res = [similar_group,correlation_values]
-        return (res)
+                    if not already_in_group:
+                        # Add similar image to the group
+                        if keypoints_matched_ratio > th:
+                            similar_group.append(os.path.normpath(os.path.join(self.folder_path, image_key)))
+                            correlation_values.append(str(keypoints_matched_ratio))
+
+            time.sleep(0.001)
+            res = [similar_group,correlation_values]
+            return (res)
+        except FileNotFoundError as e:
+            self.Print_log_item(["An error occurred:", str(e)], "red")
 
     def Print_log_item(self,str,color):
         item = QListWidgetItem(str)
         item.setForeground(QColor(color))  # Set the font color to red
         self.comparison_done.emit(item)
-        time.sleep(0.01)
-        return item
+        time.sleep(0.001)
+        #return item
 
     def append_group(self,groups,similar_group,img_name,dict):
         groups.append(similar_group[0][:])
@@ -503,18 +623,7 @@ class SIFT_Worker(QThread):
         image_arr = arr[x1:x2, y1:y2]
         return image_arr
 
-class Image_processing_Worker(QThread):
-    folder_copy = pyqtSignal(str)
 
-    def __init__(self, source_path,destination_path,crop_window,state):
-        super(Image_processing_Worker, self).__init__()
-        self.source_path = source_path
-        self.destination_path = destination_path
-        self.crop_window = crop_window
-        self.state = state
-
-    def run(self):
-        x=1
 class UI(Ui_MainWindow, QMainWindow):
     def __init__(self):
         super().__init__()
@@ -529,10 +638,11 @@ class UI(Ui_MainWindow, QMainWindow):
         self.sub_window = page(self.tableWidget)
         self.sub_window.Main_window = self
 
-#------------- initialize all clickes ----------------------
+#------------- initialize all clickes --------------------------------------------------------------------------------------------------------------
     def init_button_actions(self):
         self.radioButton.clicked.connect(self.checkBox_set_offset)
         self.delete_group.clicked.connect(self.delete_similar_group)
+        self.Save_uniqe.clicked.connect(self.Save_uniqe_im)
         self.source_button.clicked.connect(self.select_folder)
         self.destination_button.clicked.connect(self.select_folder)
         self.Star_seperate.clicked.connect(self.seperate_images)
@@ -549,10 +659,9 @@ class UI(Ui_MainWindow, QMainWindow):
         self.Crop_checkbox.clicked.connect(self.checkbox_manager)
         self.seperate_oclass.clicked.connect(self.checkbox_manager)
         self.seperate_checkbox.clicked.connect(self.checkbox_manager)
-        self.spinBox_ROI.valueChanged.connect(self.draw_ROI)
+        self.spinBox_ROI.valueChanged.connect(self.RoI_update)
         self.init_appereance()
 
-#------------------------ init appereance GUI -----------------------
     def init_appereance(self):
         self.setWindowTitle("ADC utility tool")
         self.offset_y.hide()
@@ -569,6 +678,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.horizontalSlider.hide()
         self.similar_groups.hide()
         self.delete_group.hide()
+        self.Save_uniqe.hide()
         self.label_9.hide()
         self.label_3.hide()
         self.plainTextEdit.hide()
@@ -635,8 +745,6 @@ class UI(Ui_MainWindow, QMainWindow):
                 self.x_offset_text.hide()
                 self.y_offset_text.hide()
 
-
-
     def checkbox_similar_images(self):
         if self.similar_analysis.isChecked():
             self.similar_groups.show()
@@ -666,6 +774,7 @@ class UI(Ui_MainWindow, QMainWindow):
             self.doubleSpinBox.hide()
             self.spinBox_ROI.hide()
             self.delete_group.hide()
+            self.Save_uniqe.hide()
 
     #show histogram objects
     def checkbox_histogram_view(self):
@@ -725,14 +834,16 @@ class UI(Ui_MainWindow, QMainWindow):
         root.withdraw()
         folder_path = filedialog.askdirectory(title="select folder")
         sender = self.sender().objectName()
-        self.root_folder = folder_path
+
 
         if sender == "source_button":
             self.Source_path = folder_path
+            self.root_folder = folder_path
             self.Source_TextEdit.setPlainText(folder_path)
             self.files_list = self.get_image_list_from_root(self.Source_path)
             self.f_object = [self.files_list, 0]
             self.current_image_path = self.find_first_image(self.Source_path)
+            self.curr_im = Image.open(self.current_image_path)
             self.Update_image()
 
         else:
@@ -765,23 +876,26 @@ class UI(Ui_MainWindow, QMainWindow):
         self.write_to_logview( tmp_str + "image " + str(file_indx) + "/" + str(len(list)))
         self.Update_image()
 
-
     def Update_image(self):
         try:
             self.image_changing(self.current_image_path)
 
             im = Image.open(self.current_image_path)
+            self.temp_img = self.current_image_path
             self.image_hist_plot(im)
             pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
             if self.tabWidget.currentWidget().objectName() == 'crop_tab':
                 geo = self.label_image.geometry().getRect()
                 pixmap = pixmap.scaled(geo[-1], geo[-1])
                 self.label_image.setPixmap(pixmap)
-            else:
+            elif self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
                 geo = self.label_5.geometry().getRect()
                 pixmap = pixmap.scaled(geo[-1], geo[-1])
                 self.label_5.setPixmap(pixmap)
-
+            else:
+                geo = self.label_8.geometry().getRect()
+                pixmap = pixmap.scaled(geo[-1], geo[-1])
+                self.label_8.setPixmap(pixmap)
         except:
             QMessageBox.about(self, "info massage", "no more images")
 
@@ -790,6 +904,19 @@ class UI(Ui_MainWindow, QMainWindow):
         xx= self.similar_groups.currentText()
         for img in list(self.candidates[xx]['Images']):
             os.remove(img)
+
+    def Save_uniqe_im(self):
+        x=1
+        Exclude_img_list=[]
+        for img_list in list(self.candidates.values()):
+            if  len(img_list)>0:
+                for img in list(img_list['Images']):
+                    Exclude_img_list.append(img)
+        for img in self.img_path_list:
+            if not(img in Exclude_img_list):
+                image = Image.open(img)
+                img_name=img.split("\\")[-1]
+                image.save(os.path.join(self.destination_path,img_name))
 
     def delete_similar_groups(self):
         for group in self.candidates.keys():
@@ -856,17 +983,22 @@ class UI(Ui_MainWindow, QMainWindow):
                 img_list =  list(self.candidates[group])
                 img_str = self.root_folder + "\\" +img_list[0].split("\\")[-1]
         else:
-            img_list =  list(self.candidates[group]['Images'])
-            img_str = self.root_folder + "\\" + self.similar_groups.currentText().split(" ")[-1]
-        self.Add_items_to_table(img_list,flag)
-
-        self.curr_im = Image.open(img_str)
-        self.draw_ROI()
-        self.sub_window.duplicates2 = img_list
-        self.delete_group.show()
+            img_list =  list(self.candidates[group])
+            img_str = self.similar_groups.currentText()
+        if 'img_list' in locals():
+            self.Add_items_to_table(img_list,flag)
+            self.curr_im = Image.open(os.path.normpath(img_str))
+            pixmap = self.draw_ROI()
+            self.label_8.setPixmap(pixmap)
+            self.sub_window.duplicates2 = img_list
+            self.delete_group.show()
+            self.Save_uniqe.show()
 
     def update_time_in_log(self, t):
         self.write_to_logview("Compare took: " + str(t) + " seconds")
+
+    def update_im_list(self,l):
+        self.img_path_list=l
 
     def update_bar(self, p):
         self.progressBar.setValue(int(p))
@@ -882,7 +1014,7 @@ class UI(Ui_MainWindow, QMainWindow):
         self.write_to_logview(results)
 
     def image_changing(self, path):
-        zoom = self.horizontalScrollBar.value()
+        zoom = self.Zoom_indx
         image_label_size = self.label_5.geometry().getRect()
         i = Image.open(path)
         width, height = i.size
@@ -904,9 +1036,10 @@ class UI(Ui_MainWindow, QMainWindow):
             i = i.resize((image_label_size[2], image_label_size[3]), Image.LANCZOS)
         draw = ImageDraw.Draw(i)
         middle_frame = i.size[0] / 2
+        BBOX = middle_frame/self.horizontalScrollBar.value()
         draw.rectangle(
-            [middle_frame - middle_frame / 5, middle_frame - middle_frame / 5, middle_frame + middle_frame / 5,
-             middle_frame + middle_frame / 5],
+            [middle_frame - BBOX, middle_frame - BBOX, middle_frame + BBOX,
+             middle_frame + BBOX],
             outline="red", width=2)
         i.save(os.getcwd() + '\\tmp.jpeg')
 
@@ -984,8 +1117,24 @@ class UI(Ui_MainWindow, QMainWindow):
             zoom_indx = -1*numSteps.manhattanLength()
         else:
             zoom_indx = numSteps.manhattanLength()
-        s_indx = self.horizontalScrollBar.value()
-        self.horizontalScrollBar.setValue(s_indx + zoom_indx)
+        s_indx = self.Zoom_indx
+        self.Zoom_indx = s_indx + zoom_indx
+
+        list = self.f_object[0]
+        file_indx = self.f_object[1]
+        self.curr_im = list[file_indx]
+        self.image_changing(self.curr_im)
+
+        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+
+        if self.tabWidget.currentWidget().objectName() == 'image_extractor_tab':
+            geo = self.label_5.geometry().getRect()
+            pixmap = pixmap.scaled(geo[-1], geo[-1])
+            self.label_5.setPixmap(pixmap)
+        else:
+            geo = self.label_image.geometry().getRect()
+            pixmap = pixmap.scaled(geo[-1], geo[-1])
+            self.label_image.setPixmap(pixmap)
 
     # display Vertical line -Lower th
     def Scrollbar_lower_th_display(self):
@@ -1005,8 +1154,9 @@ class UI(Ui_MainWindow, QMainWindow):
     def Event_scrollbar(self):
                 list = self.f_object[0]
                 file_indx = self.f_object[1]
-                self.current_image_path = list[file_indx]
-                self.image_changing(self.current_image_path)
+                self.curr_im = list[file_indx]
+                self.image_changing(self.curr_im)
+
                 pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
 
 
@@ -1018,7 +1168,6 @@ class UI(Ui_MainWindow, QMainWindow):
                     geo = self.label_image.geometry().getRect()
                     pixmap = pixmap.scaled(geo[-1], geo[-1])
                     self.label_image.setPixmap(pixmap)
-
 
     # mouse clicked on image to cropp by center
     def mousePressEvent(self, event):
@@ -1072,7 +1221,7 @@ class UI(Ui_MainWindow, QMainWindow):
                     line_pixels = numpy.array(line_pixels)
                     hist_list.append((line_pixels, np.arange(0, len(line_pixels) + 1)))
                 self.line_hist_flag = 1
-                hist_list = numpy.asarray(hist_list)
+                hist_list = numpy.asarray(hist_list, dtype=object)
                 self.pygraph_plot(hist_list)
                 self.draw_line((self.press_mouse_pos[0], self.press_mouse_pos[1]), (x, y))
             self.press_mouse_pos = None
@@ -1088,8 +1237,8 @@ class UI(Ui_MainWindow, QMainWindow):
         # Draw a red line on the image
         line_color = "gray"
 
-        line_width = 2
-        draw.line([(start[0]/factor_x,start[1]/factor_y),(end[0]/factor_x,end[1]/factor_y)], fill="red", width=line_width)
+        line_width = 4
+        draw.line([(start[0]/factor_x,start[1]/factor_y),(end[0]/factor_x,end[1]/factor_y)], fill=line_color, width=line_width)
         image.save(os.getcwd() + '\\tmp.jpeg')
         pixmap=QPixmap(os.getcwd() + '\\tmp.jpeg')
 
@@ -1254,6 +1403,7 @@ class UI(Ui_MainWindow, QMainWindow):
         worker.found_similar_group.connect(self.update_similar_group)
         worker.precentage.connect(self.update_bar)
         worker.delta.connect(self.update_time_in_log)
+        worker.Images_path_l.connect(self.update_im_list)
         worker.start()
 
     # calculate hist of images
@@ -1331,100 +1481,42 @@ class UI(Ui_MainWindow, QMainWindow):
         self.progressBar.setValue(0)
         root = tk.Tk()
         root.withdraw()
-        indx=1
+        params = {}
         if not self.Source_path == "":
             if not self.destination_path =="":
-                path = os.path.normpath(self.Source_path)
                 #Simple seperation without recipe
                 if self.Crop_checkbox.isChecked():
                     if not (self.output_X_size.toPlainText() == "" and self.output_Y_size.toPlainText()  == ""):
-                        # Crop and offset
-                        self.write_to_logview("start converting and cropping")
-                        D_path = self.destination_path
-                        file_list = os.listdir(self.Source_path)
-                        self.write_to_logview("ploting example of fixed offset image")
-                        new_width = int(self.output_X_size.toPlainText())
-                        new_height = int(self.output_Y_size.toPlainText())
-                        SourcePath_len = len(self.Source_path)
-                        for root, dirs, files in os.walk(self.Source_path):
-                            for file_ in files:
-                                if file_=="99620.58098.c.125650875.1--a54b55e3b7.jpeg":
-                                    x=1
-                                tmp_str = file_.split('.')
-                                if tmp_str[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
-                                    img = Image.open(root + "\\" + file_)
-                                    w, h = img.size
-                                    destination_Path = os.path.normpath(D_path + root[SourcePath_len:])
-                                    is_dir = os.path.isdir(destination_Path)
-                                    if is_dir == False:
-                                        os.makedirs(destination_Path)
-                                    if self.radioButton.isChecked():
-                                        img1 = self.Image_convert(math.ceil((w - new_width) / 2),
-                                                                  math.ceil((h - new_height) / 2), img)
-                                    else:
-                                        left = math.ceil((w - new_width) / 2)
-                                        top = math.ceil((h - new_height) / 2)
-                                        right = math.ceil((w + new_width) / 2)
-                                        bottom = math.ceil((h + new_height) / 2)
-                                        img1 = img.crop((left, top, right, bottom))
-                                        file_name = file_.split(".")
-
-                                    img1.save(destination_Path + '\\' + file_)
-                                    self.write_to_logview("Image: " + file_ + "number " + str(indx) + " converted")
-                                indx = indx +1
+                        params["output x"] = int(self.output_X_size.toPlainText())
+                        params["output y"] = int(self.output_Y_size.toPlainText())
+                        if self.radioButton.isChecked():
+                            params["offset x"] = int(self.offset_x.toPlainText())
+                            params["offset y"] = int(self.offset_y.toPlainText())
+                        else:
+                            params["offset x"] = 0
+                            params["offset y"] = 0
+                        worker = Image_processing_Worker(self.Source_path,self.destination_path, "crop", params)
 
                     else:
                         messagebox.showinfo(title='Error massage', message='Please fill in the output size')
-
                 if self.seperate_checkbox.isChecked():
                     if not (self.offset_x.toPlainText()=="" and self.offset_y.toPlainText()==""):
                     # Seperate folders
-                        N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
-                        self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
-                        folder_num = 0
-                        # create the first folder0
-                        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                        os.makedirs(folder_path)
-                        # loop throught all subfolders in path
-                        for root, dirs, files in os.walk(path):
-                            l = len(files)
-                            for i, file in enumerate(files):
-                                self.progressBar.setValue(i / l)
-                                if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
-                                    # check if folder is full to max images
-                                    if len(os.listdir(folder_path)) >= N:
-                                        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
-                                        os.makedirs(folder_path)
-                                        self.write_to_logview("subfolder: " + str(folder_num) + "ready")
-                                        folder_num += 1
-                                    shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
-                        self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
+                        params = [int(self.plainTextEdit.toPlainText())]
+                        worker = Image_processing_Worker(self.Source_path,self.destination_path, "folders", params)
                     else:
                             messagebox.showinfo(title='Error massage', message='Please fill in the offset')
                     self.write_to_logview("finish convert")
                 if self.seperate_oclass.isChecked():
-                    for root, dirs, files in os.walk(path):
-                        if "ADC" in dirs:
-                            df = pd.read_csv(root + '\\ADC\\Surface2Bump.csv')
-                            l=len(df)
-                            for i in range(l):
-                                image_name = df["ImageName"][i]
-                                image_bin = df[" OClass"][i]
-                                image_x = df["ImageX"][i]
-                                image_y = df["ImageY"][i]
-                                if not os.path.exists(os.path.normpath(self.destination_path + '\\' + str(image_bin))):
-                                    os.makedirs(os.path.normpath(self.destination_path + '\\' + str(image_bin)))
-
-                                src =(root + '\\' + image_name)
-                                tmp_img = self.center_and_crop_image((1000,1000),src,image_x,image_y)
-                                dst =os.path.normpath(self.destination_path + '\\' + str(image_bin) + "\\" + image_name)
-                                tmp_img.save(dst)
+                    params = [None]
+                    worker = Image_processing_Worker(self.Source_path, self.destination_path, "folders", params)
+                worker.log_write.connect(self.update_list_items)
+                worker.start()
             else:
                 messagebox.showinfo(title='Error massage', message='destination folder isnt choosen')
         else:
             messagebox.showinfo(title='Error massage', message='Source folder isnt choosen')
 
-        self.write_to_logview("finish converting images")
 
 #-----------------------Image proccesing ------------------------- ----------------
     #padding image for future use
@@ -1647,22 +1739,134 @@ class UI(Ui_MainWindow, QMainWindow):
         pixmap = pixmap.scaled(geo[-1], geo[-1])
         self.label_7.setPixmap(pixmap)
 
-    def draw_ROI(self):
-        im = self.curr_im
-        ROI = self.spinBox_ROI.value()
-        geo = self.label_8.geometry().getRect()
-        resized_im = im.resize([geo[2], geo[3]])
-        draw = ImageDraw.Draw(resized_im)
-        middle_frame = geo[2] / 2
-        draw.rectangle([middle_frame - ROI / 2,
-                        middle_frame - ROI / 2,
-                        middle_frame + ROI / 2,
-                        middle_frame + ROI / 2],
-                       outline="blue", width=2)
-        resized_im.save(os.getcwd() + '\\tmp.jpeg')
-        pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
-        self.label_8.setPixmap(pixmap)
+    def RoI_update(self):
+        p=self.draw_ROI()
+        self.label_8.setPixmap(p)
 
+    def draw_ROI(self):
+        #im = self.curr_im
+        ROI = self.spinBox_ROI.value()
+        if not (self.curr_im is None):
+            geo = self.label_8.geometry().getRect()
+            resized_im = self.curr_im.resize([geo[2], geo[3]])
+            draw = ImageDraw.Draw(resized_im)
+            middle_frame = geo[2] / 2
+            draw.rectangle([middle_frame - ROI / 2,
+                            middle_frame - ROI / 2,
+                            middle_frame + ROI / 2,
+                            middle_frame + ROI / 2],
+                           outline="blue", width=2)
+            resized_im.save(os.getcwd() + '\\tmp.jpeg')
+            pixmap = QPixmap(os.getcwd() + '\\tmp.jpeg')
+            return(pixmap)
+
+class Image_processing_Worker(QThread):
+    log_write = pyqtSignal(str)
+
+    def __init__(self, source_path,destination_path,state,params):
+        super(Image_processing_Worker, self).__init__()
+        self.source_path = source_path
+        self.destination_path = destination_path
+        self.params = params
+        self.state = state
+
+    def Print_log_item(self,str,color):
+        item = QListWidgetItem(str)
+        item.setForeground(QColor(color))  # Set the font color to red
+        self.log_write.emit(item)
+
+    def run(self):
+        if self.state == "crop":
+            self.crop_images()
+        elif self.state == "seperate by folders":
+            self.seperate_by_folders()
+        else:
+            self.seperate_oclass()
+
+    def seperate_oclass(self):
+        for root, dirs, files in os.walk(self.source_path):
+            if "ADC" in dirs:
+                df = pd.read_csv(root + '\\ADC\\Surface2Bump.csv')
+                l = len(df)
+                for i in range(l):
+                    image_name = df["ImageName"][i]
+                    image_bin = df[" OClass"][i]
+                    image_x = df["ImageX"][i]
+                    image_y = df["ImageY"][i]
+                    if not os.path.exists(os.path.normpath(self.destination_path + '\\' + str(image_bin))):
+                        os.makedirs(os.path.normpath(self.destination_path + '\\' + str(image_bin)))
+
+                    src = (root + '\\' + image_name)
+                    tmp_img = self.center_and_crop_image((1000, 1000), src, image_x, image_y)
+                    dst = os.path.normpath(self.destination_path + '\\' + str(image_bin) + "\\" + image_name)
+                    tmp_img.save(dst)
+
+    def crop_images(self):
+        # Crop and offset
+        self.log_write.emit("Start cropping images")
+
+        indx = 1
+        new_width = self.params["output x"]
+        new_height = self.params["output y"]
+        SourcePath_len = len(self.source_path)
+
+        for root, dirs, files in os.walk(self.source_path):
+            for file_ in files:
+                tmp_str = file_.split('.')
+                if tmp_str[-1].lower() in ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif']:
+                    img = Image.open(root + "\\" + file_)
+                    w, h = img.size
+                    destination_Path = os.path.normpath(self.destination_path + root[SourcePath_len:])
+                    is_dir = os.path.isdir(destination_Path)
+                    if is_dir == False:
+                        os.makedirs(destination_Path)
+
+                    img1 = self.Image_convert(math.ceil((w - new_width) / 2),
+                                                  math.ceil((h - new_height) / 2), img)
+
+                    img1.save(destination_Path + '\\' + file_)
+                    self.log_write.emit("Image: " + str(indx) + " " + file_ + " converted")
+                indx = indx + 1
+
+        self.log_write.emit("finished cropping images")
+
+    def seperate_by_folders(self):
+        N = int(self.plainTextEdit.toPlainText())  # number of images per subfolder
+        self.write_to_logview("start seperation into subfolders - each folder contains: " + str(N))
+        folder_num = 0
+        # create the first folder0
+        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+        os.makedirs(folder_path)
+        # loop throught all subfolders in path
+        for root, dirs, files in os.walk(self.source_path):
+            l = len(files)
+            for i, file in enumerate(files):
+                self.progressBar.setValue(i / l)
+                if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+                    # check if folder is full to max images
+                    if len(os.listdir(folder_path)) >= N:
+                        folder_path = os.path.join(self.destination_path, "folder" + str(folder_num))
+                        os.makedirs(folder_path)
+                        self.write_to_logview("subfolder: " + str(folder_num) + "ready")
+                        folder_num += 1
+                    shutil.copy(os.path.join(root, file), os.path.join(folder_path, file))
+        self.write_to_logview("finished seperat into: " + str(folder_num) + "subfolders")
+
+    def Image_convert(self ,left ,top ,img):
+        new_width = self.params["output x"]
+        new_height = self.params["output y"]
+        w,h = img.size
+        if self.params["offset x"] != 0 or self.params["offset x"] != 0:
+            img1 = Image.new(img.mode, (w + self.params["offset x"], h + self.params["offset y"]))
+            img1.paste(img, ( - self.params["offset x"], - self.params["offset y"]))
+        else:
+            img1 =img
+        left = math.ceil((w - new_width) / 2)
+        top = math.ceil((h - new_height) / 2)
+        right = math.ceil((w + new_width) / 2)
+        bottom = math.ceil((h + new_height) / 2)
+        img2 = img1.crop((left, top, right, bottom))
+        return img2
 
 if __name__ == "__main__":
     app=QApplication(sys.argv)
